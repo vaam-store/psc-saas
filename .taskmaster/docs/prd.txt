@@ -1,0 +1,252 @@
+<context>
+# Overview  
+This product is a **Cameroon-only escrow and payments platform**, inspired by **Stripe and PayPal**, but designed specifically to integrate with local **mobile money providers**: MTN, Orange, and Camtel.  
+
+It addresses the **fragmentation problem** in Cameroon’s digital payments ecosystem, where customers and merchants are tied to different providers and cannot transact easily across rails. Today, a customer with MTN money cannot easily pay a merchant who prefers Orange cash-out, creating friction and blocking digital commerce.
+
+The platform provides a **unified API** and **back-office dashboard** for both merchants and customers. It offers two payment modes:
+
+* **Escrow payments**: Customer funds are held safely until the merchant fulfills their obligation (like PayPal’s business model). If the merchant fails, the money is refunded.
+* **Simple charge payments**: Direct, immediate payments to merchants, similar to Stripe’s `charge` API. Suitable for low-risk transactions where instant settlement is desirable.
+
+It is **valuable** because it increases **trust** (escrow for high-value and new merchants) and **convenience** (charge-based instant payments for established or low-risk cases). It allows customers to use their **preferred mobile money provider** and merchants to receive funds in their **preferred cash-out provider**, regardless of mismatch.
+
+The platform targets **digital merchants, e-commerce shops, service providers, and marketplaces** that operate in Cameroon and want a reliable, developer-friendly, and compliant payment solution.
+
+---
+
+# Core Features
+
+* **Escrow Payments**
+
+  * **What**: Customer funds are captured and stored in escrow until merchant confirms order fulfillment.
+  * **Why**: Builds consumer trust and reduces fraud, ensuring merchants deliver before being paid.
+  * **How**: Ledger entries debit the provider float (MTN/Orange/Camtel wallet), credit the escrow liability, and upon merchant confirmation, release the amount to merchant payable. If the merchant defaults, the funds are refunded to the customer.
+
+* **Simple Charge Payments (Stripe-like)**
+
+  * **What**: Immediate settlement to the merchant without escrow holding.
+  * **Why**: Needed for low-value, fast-moving goods and services (e.g., airtime reselling, digital content, subscriptions). Reduces latency in payment flow.
+  * **How**: Ledger directly debits provider float and credits merchant payable. Optionally, a payout instruction is triggered immediately.
+
+* **Cross-Provider Payouts**
+
+  * **What**: Merchants can cash out on MTN, Orange, or Camtel regardless of where the funds originated.
+  * **Why**: Removes friction in fragmented markets; merchants receive funds where they actually need them.
+  * **How**: Treasury manages multiple provider wallets, debits merchant payable, and issues a withdraw request to the selected provider. Ledger tracks clearing moves if the liquidity is imbalanced.
+
+* **Treasury & Clearing**
+
+  * **What**: Manage liquidity across provider wallets, prevent payout failures due to float shortages.
+  * **Why**: Customers may heavily use MTN while merchants cash out on Orange, creating float imbalances.
+  * **How**: Treasury monitors wallet balances, defines thresholds, creates internal clearing moves (like FX transfers), and triggers top-ups from bank accounts to restore balance.
+
+* **Refunds**
+
+  * **What**: Return customer funds if merchant fails to deliver or disputes are resolved in the customer’s favor.
+  * **Why**: Consumer protection and compliance with local e-commerce regulations.
+  * **How**: Ledger reverses escrow liability or merchant payable, credits back provider float, and provider gateway issues refund transaction to customer’s account.
+
+* **Reconciliation**
+
+  * **What**: Match internal ledger entries with official statements from providers.
+  * **Why**: Guarantees financial correctness and trust in the system. Detects discrepancies early.
+  * **How**: Recon service imports provider statements (CSV/API), normalizes records, fuzzy matches to journals, and raises adjustment events if mismatches occur.
+
+* **Unified Provider Gateway**
+
+  * **What**: Abstracts away provider-specific APIs into a single consistent contract.
+  * **Why**: MTN, Orange, and Camtel all have different APIs, quirks, and sandbox setups. Without this, business logic would be polluted with provider complexity.
+  * **How**: A `Provider` trait (`deposit`, `withdraw`, `refund`, `query`, `verify_webhook`) is implemented for each provider. Services call the unified interface without caring which provider is behind it.
+
+---
+
+# User Experience
+
+* **User Personas**
+
+  * **Customers**: Pay safely via mobile money; choose escrow for higher trust, or instant charges for convenience.
+  * **Merchants**: Accept payments from all customers regardless of provider; withdraw funds reliably; manage escrow vs charge balances.
+  * **Org Admins**: Monitor organisation-level transactions, disputes, balances, treasury, and reporting.
+  * **Treasury Operators**: Oversee provider wallets, manage float liquidity, and execute clearing/top-ups.
+
+* **Key User Flows**
+
+  * **Escrow Flow**: Customer initiates payment → Provider gateway collects money → Ledger posts escrow liability → Merchant fulfills order → Funds released → Payout executed.
+  * **Charge Flow**: Customer initiates payment → Provider gateway collects money → Ledger credits merchant payable → Payout executed automatically.
+  * **Refund Flow**: Refund requested → Ledger reverses liability/payable → Provider gateway returns funds to customer.
+  * **Treasury Flow**: Orange wallet low but MTN wallet high → Treasury service posts clearing move → Executes bank transfer from MTN to Orange account.
+  * **Recon Flow**: Provider statement imported → Entries matched with ledger → Mismatches flagged and adjusted.
+
+* **UI/UX Considerations**
+
+  * **Checkout**:
+
+    * Escrow option highlighted for high-value/marketplace transactions.
+    * Charge option default for fast payments.
+  * **Merchant Dashboard**:
+
+    * Two clear balances: Escrow Balance (funds not yet released) vs Available Balance (funds ready for payout).
+    * Transparent fees and payout histories.
+  * **Treasury Dashboard**:
+
+    * Visualisation of provider float health (MTN/Orange/Camtel balances).
+    * Alerts for low-water thresholds and pending clearing actions.
+  * **Transparency & Audit**:
+
+    * Full transaction trail for customers and merchants.
+    * Consistent error handling, retriable operations, and latency <500ms p95.
+
+      </context>
+
+<PRD>
+# Technical Architecture  
+
+* **System Components**
+
+  * Ledger Service: Double-entry accounting; journals; enforce debit=credit invariants.
+  * Payments Service: Orchestrates escrow lifecycle and charge-based payments.
+  * Payouts Service: Executes merchant withdrawals, applies fees, handles provider callbacks.
+  * Treasury Service: Monitors floats, triggers clearing/top-ups, enforces liquidity policies.
+  * Provider Gateway: Unified interface over MTN/Orange/Camtel APIs, handles webhooks.
+  * Reconciliation Service: Imports provider statements, matches entries, raises adjustments.
+  * BFF/API Gateway: Public HTTP API for merchants, customers, and dashboards.
+  * Shared Packages: Protobufs, domain types, config, errors, observability, auth, idempotency, provider traits, fees, retry logic, and test harness.
+
+* **Data Models**
+
+  * **Principals**: Customers, merchants, admins, platform, treasury.
+  * **Provider Wallets**: MTN/Orange/Camtel float accounts.
+  * **Ledger Accounts**:
+
+    * Float assets (per provider wallet).
+    * Customer escrow payable.
+    * Merchant payable.
+    * Clearing receivable/payable.
+    * Fee revenue.
+  * **Business Events**: Payment (charge or escrow), payout, refund, clearing, treasury top-up.
+  * **Provider Transactions**: Raw provider-side records, reconciled against journals.
+
+* **APIs and Integrations**
+
+  * Internal gRPC APIs:
+
+    * Ledger: `PostJournal`, `GetBalance`, `ListBalances`.
+    * Payments: `CreateEscrow`, `ReleaseEscrow`, `Refund`, `CreateCharge`.
+    * Payouts: `CreatePayout`, `GetPayoutStatus`.
+    * Treasury: `GetWalletStatus`, `PostClearingMove`.
+    * Provider Gateway: `Deposit`, `Withdraw`, `Refund`, `QueryTransaction`, `VerifyWebhook`.
+  * Public REST API (via BFF):
+
+    * Merchant endpoints: `/charges`, `/escrows`, `/payouts`, `/refunds`.
+    * Org endpoints: `/balances`, `/transactions`, `/reports`.
+  * Integrations:
+
+    * MTN/Orange/Camtel APIs (collection, disbursement, refunds, webhooks).
+    * Bank API (for top-ups).
+    * Keycloak (identity and org scoping).
+
+* **Infrastructure Requirements**
+
+  * Kubernetes + Knative: Microservice deployment and autoscaling.
+  * Postgres: Authoritative ledger and state.
+  * Redis: Idempotency key store, lightweight queues, caching.
+  * NATS/Kafka: Event bus for async workflows and sagas.
+  * Vault/KMS: Secrets management (provider credentials, DB passwords).
+  * OpenTelemetry + Grafana + Loki: Observability and monitoring.
+
+---
+
+# Development Roadmap
+
+* **MVP Requirements**
+
+  * Shared crates: Types, proto, config, errors, observability, auth, idempotency, provider traits.
+  * Ledger Service: Journals, entries, balances, debit=credit enforcement.
+  * Provider Gateway: MTN sandbox adapter, mock provider.
+  * Payments Service:
+
+    * Escrow: CreateEscrow, ReleaseEscrow, Refund.
+    * Charge: CreateCharge (direct merchant payment).
+  * Payouts Service: Basic Orange integration for merchant cash-outs.
+  * BFF/API: Minimal HTTP API exposing charges, escrows, payouts.
+  * NextJS Dashboard: Merchant view (escrow vs charge balances, payout list).
+
+* **Future Enhancements**
+
+  * Treasury Service: Liquidity monitoring, clearing, top-ups.
+  * Reconciliation Service: Provider statement import and matching.
+  * Risk Service: Fraud/anomaly scoring on pay-ins/payouts.
+  * Configurable Fee Engine: Tiered pricing, percentage caps, org-level overrides.
+  * Dispute Management: Merchant/customer dispute resolution workflows.
+  * Multi-Org Reporting: Aggregated analytics and exports.
+
+---
+
+# Logical Dependency Chain
+
+* **Foundation**
+
+  * Shared packages, Ledger Service with journal invariants, Provider Gateway (mock + MTN sandbox).
+* **First Usable Product**
+
+  * Payments Service (escrow + charge).
+  * Payouts Service (Orange).
+  * BFF + NextJS (merchant UI).
+* **Growth Layers**
+
+  * Treasury Service for liquidity management.
+  * Recon Service for correctness and compliance.
+  * Risk Service for fraud detection.
+  * Advanced fee engine and disputes.
+
+---
+
+# Risks and Mitigations
+
+* **Technical Challenges**
+
+  * Provider APIs are unstable or poorly documented.
+
+    * Mitigation: Build provider-mock, implement retries, test with sandbox first.
+  * Supporting both escrow and charges may complicate ledger invariants.
+
+    * Mitigation: Use `event_kind` field and reuse the same journal posting rules.
+
+* **MVP Scope**
+
+  * Risk of overbuilding too many services.
+
+    * Mitigation: Focus on ledger + payments (escrow + charge) + provider gateway (MTN) first.
+
+* **Resource Constraints**
+
+  * Limited engineering resources may delay features.
+
+    * Mitigation: Scaffold all crates now, build incrementally, prioritise user-visible flows.
+
+* **Financial Risk**
+
+  * Float imbalances across providers.
+
+    * Mitigation: Treasury service to detect low liquidity early and trigger clearing.
+
+---
+
+# Appendix
+
+* **Research Findings**
+
+  * Escrow is crucial for marketplaces and high-value trust transactions.
+  * Simple charges are demanded by merchants for daily small-value transactions.
+  * Providers in Cameroon have poor documentation; sandbox reliability varies.
+
+* **Technical Specifications**
+
+  * Money stored in XAF minor units (no floats).
+  * Journal-level invariants: debits == credits, single-currency per journal.
+  * Idempotency: Every mutating request has an `idempotency-key`, stored in Redis.
+  * Webhooks: Provider transaction IDs used to guarantee idempotency.
+  * Observability: Every request and journal posting traced via OpenTelemetry.
+
+</PRD>  

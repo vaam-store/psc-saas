@@ -1,0 +1,140 @@
+services:
+  oat-gen-client-mtn-collection:
+    image: openapitools/openapi-generator-cli
+    volumes:
+      - ./crates/clients/:/packages
+      - ./openapi/:/openapi
+    command:
+      - generate
+      - -i
+      - /openapi/mtn/mtn-collection.yaml
+      - -g
+      - rust
+      - -o
+      - /packages/psc-mtn-collection
+      - --package-name
+      - psc-mtn-collection
+        
+  oat-gen-client-mtn-disbursement:
+    image: openapitools/openapi-generator-cli
+    volumes:
+      - ./crates/clients/:/packages
+      - ./openapi/:/openapi
+    command:
+      - generate
+      - -i
+      - /openapi/mtn/mtn-disbursement.yaml
+      - -g
+      - rust
+      - -o
+      - /packages/psc-mtn-disbursement
+      - --package-name
+      - psc-mtn-disbursement
+        
+  oat-gen-client-mtn-remittance:
+    image: openapitools/openapi-generator-cli
+    volumes:
+      - ./crates/clients/:/packages
+      - ./openapi/:/openapi
+    command:
+      - generate
+      - -i
+      - /openapi/mtn/mtn-remittance.yaml
+      - -g
+      - rust
+      - -o
+      - /packages/psc-mtn-remittance
+      - --package-name
+      - psc-mtn-remittance
+        
+  oat-gen-client-mtn-sandbox-provisioning:
+    image: openapitools/openapi-generator-cli
+    volumes:
+      - ./crates/clients/:/packages
+      - ./openapi/:/openapi
+    command:
+      - generate
+      - -i
+      - /openapi/mtn/mtn-sandbox-provisioning-api.yaml
+      - -g
+      - rust
+      - -o
+      - /packages/psc-mtn-sandbox-provisioning
+      - --package-name
+      - psc-mtn-sandbox-provisioning
+  oat-gen-client-orange-money:
+    image: openapitools/openapi-generator-cli
+    volumes:
+      - ./crates/clients/:/packages
+      - ./openapi/:/openapi
+    command:
+      - generate
+      - -i
+      - /openapi/orange/orange-money.yaml
+      - -g
+      - rust
+      - -o
+      - /packages/psc-orange-orange
+      - --package-name
+      - psc-orange-orange
+
+  oat-gen-api-charges:
+    image: openapitools/openapi-generator-cli
+    volumes:
+      - ./crates/apis/:/packages
+      - ./openapi/:/openapi
+    command:
+      - generate
+      - -i
+      - /openapi/api/charges.yaml
+      - -g
+      - rust-axum
+      - -o
+      - /packages/psc-api-charges
+      - --package-name
+      - psc-api-charges
+  oat-gen-api-escrow:
+    image: openapitools/openapi-generator-cli
+    volumes:
+      - ./crates/apis/:/packages
+      - ./openapi/:/openapi
+    command:
+      - generate
+      - -i
+      - /openapi/api/escrow.yaml
+      - -g
+      - rust-axum
+      - -o
+      - /packages/psc-api-escrow
+      - --package-name
+      - psc-api-escrow
+  oat-gen-api-metrics:
+    image: openapitools/openapi-generator-cli
+    volumes:
+      - ./crates/apis/:/packages
+      - ./openapi/:/openapi
+    command:
+      - generate
+      - -i
+      - /openapi/api/metrics.yaml
+      - -g
+      - rust-axum
+      - -o
+      - /packages/psc-api-metrics
+      - --package-name
+      - psc-api-metrics
+  oat-gen-api-webhook:
+    image: openapitools/openapi-generator-cli
+    volumes:
+      - ./crates/apis/:/packages
+      - ./openapi/:/openapi
+    command:
+      - generate
+      - -i
+      - /openapi/api/webhook.yaml
+      - -g
+      - rust-axum
+      - -o
+      - /packages/psc-api-webhook
+      - --package-name
+      - psc-api-webhook

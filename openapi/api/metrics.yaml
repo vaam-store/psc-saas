@@ -1,0 +1,206 @@
+openapi: "3.0.1"
+info:
+  title: "PSC Health, Readiness, Metrics & Info API"
+  version: "1.0.0"
+  description: "Operational endpoints for K8s/KNative probes and observability. Health probes return JSON with component-level status; metrics exposes Prometheus/OpenMetrics text format. Info returns build metadata."
+servers:
+  - url: "https://api.sandbox.psc"
+    description: "Sandbox"
+  - url: "https://api.psc"
+    description: "Production"
+security:
+  - ApiKeyAuth: [ ]
+tags:
+  - name: "Health"
+    description: "Liveness and readiness probes with dependency status."
+  - name: "Metrics"
+    description: "Prometheus-compatible metrics endpoint."
+  - name: "Info"
+    description: "Service build and environment metadata."
+
+paths:
+  /v1/health:
+    get:
+      tags: [ "Health" ]
+      summary: "Overall health"
+      description: "Aggregated health across key dependencies. Returns '200 OK' when status is 'ok' or 'degraded'; returns '503 Service Unavailable' when status is 'down'."
+      operationId: "GetOverallHealth"
+      responses:
+        "200":
+          description: "Health is ok or degraded"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+        "503":
+          description: "Health is down"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+  /v1/health/liveness:
+    get:
+      tags: [ "Health" ]
+      summary: "Liveness probe"
+      description: "Lightweight liveness check used by K8s 'livenessProbe'. Should avoid external dependency calls."
+      operationId: "GetLiveness"
+      responses:
+        "200":
+          description: "Service is alive"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Probe" }
+        "503":
+          description: "Service is not alive"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Probe" }
+  /v1/health/readiness:
+    get:
+      tags: [ "Health" ]
+      summary: "Readiness probe"
+      description: "Readiness check used by K8s 'readinessProbe'. Includes critical dependencies (database, cache, message bus, auth, provider gateways)."
+      operationId: "GetReadiness"
+      responses:
+        "200":
+          description: "Service is ready"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+        "503":
+          description: "Service is not ready"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+  /v1/health/dependencies:
+    get:
+      tags: [ "Health" ]
+      summary: "Dependency details"
+      description: "Per-dependency status with latency and last error snapshot. Useful for dashboards and on-call."
+      operationId: "GetDependencies"
+      responses:
+        "200":
+          description: "Dependency status list"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DependencyList" }
+  /v1/metrics:
+    get:
+      tags: [ "Metrics" ]
+      summary: "Prometheus metrics"
+      description: "Prometheus/OpenMetrics exposition. Content-Type is 'text/plain; version=0.0.4'. Typically unauthenticated inside the cluster; protect at the edge if exposed."
+      operationId: "GetMetrics"
+      security: [ ]
+      responses:
+        "200":
+          description: "Metrics payload"
+          content:
+            text/plain:
+              schema:
+                type: "string"
+              examples:
+                sample:
+                  summary: "Minimal metrics example"
+                  value: |
+                    # HELP psc_requests_total "total requests"
+                    # TYPE psc_requests_total counter
+                    psc_requests_total{route="/v1/charges",method="POST"} 123
+                    # HELP psc_request_duration_seconds "request duration"
+                    # TYPE psc_request_duration_seconds histogram
+                    psc_request_duration_seconds_bucket{le="0.1"} 200
+                    psc_request_duration_seconds_sum 42.5
+                    psc_request_duration_seconds_count 350
+  /v1/info:
+    get:
+      tags: [ "Info" ]
+      summary: "Service info"
+      description: "Build and deployment metadata for debugging and audits."
+      operationId: "GetServiceInfo"
+      responses:
+        "200":
+          description: "Service info payload"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InfoResponse" }
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: "apiKey"
+      in: "header"
+      name: "X-Api-Key"
+      description: "Optional API key for protected operational endpoints."
+
+  schemas:
+    Probe:
+      type: "object"
+      required: [ "status", "checked_at" ]
+      properties:
+        status:
+          type: "string"
+          description: "Overall probe status"
+          enum: [ "ok", "down" ]
+        checked_at:
+          type: "string"
+          format: "date-time"
+          description: "Timestamp of the probe"
+    HealthStatus:
+      type: "object"
+      required: [ "status", "components", "checked_at" ]
+      properties:
+        status:
+          type: "string"
+          description: "Aggregated health"
+          enum: [ "ok", "degraded", "down" ]
+        components:
+          type: "array"
+          items: { $ref: "#/components/schemas/HealthComponent" }
+        checked_at:
+          type: "string"
+          format: "date-time"
+          description: "Timestamp of the health check"
+    HealthComponent:
+      type: "object"
+      required: [ "name", "status" ]
+      properties:
+        name:
+          type: "string"
+          description: "Component name (db, redis, outbox, broker, keycloak, provider:mtn, provider:orange, provider:camtel)"
+        status:
+          type: "string"
+          enum: [ "ok", "degraded", "down" ]
+          description: "Component health status"
+        latency_ms:
+          type: "number"
+          format: "float"
+          description: "Observed latency in milliseconds (if measured)"
+        last_checked_at:
+          type: "string"
+          format: "date-time"
+          description: "Component last check timestamp"
+        last_error:
+          type: "string"
+          description: "Most recent error message (if any)"
+    DependencyList:
+      type: "object"
+      properties:
+        data:
+          type: "array"
+          items: { $ref: "#/components/schemas/HealthComponent" }
+    InfoResponse:
+      type: "object"
+      required: [ "name", "version", "git_sha", "build_time", "region", "environment" ]
+      properties:
+        name: { type: "string", description: "Service name" }
+        version: { type: "string", description: "Semantic version or image tag" }
+        git_sha: { type: "string", description: "Git commit SHA" }
+        build_time: { type: "string", format: "date-time", description: "UTC build timestamp" }
+        region: { type: "string", description: "Deployment region" }
+        environment: { type: "string", enum: [ "sandbox", "production" ], description: "Environment name" }
+        uptime_seconds: { type: "number", description: "Process uptime in seconds" }
+        k8s:
+          type: "object"
+          description: "Optional Kubernetes metadata"
+          properties:
+            pod: { type: "string" }
+            node: { type: "string" }
+            namespace: { type: "string" }
+            revision: { type: "string" }

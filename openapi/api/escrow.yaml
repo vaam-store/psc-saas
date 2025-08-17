@@ -1,0 +1,897 @@
+openapi: "3.0.1"
+info:
+  title: "PSC Escrow API"
+  version: "1.0.0"
+  description: "Escrow-only OpenAPI for a Stripe-like payment platform focused on Cameroon (MTN, Orange, Camtel). All amounts are integer minor units (XAF). OAuth2/OIDC via Keycloak; requests are org-scoped using 'X-Org-Id' and idempotent via 'Idempotency-Key'."
+servers:
+  - url: "https://api.sandbox.psc"
+    description: "Sandbox server"
+  - url: "https://api.psc"
+    description: "Production server"
+security:
+  - oauth2: ["escrow:read", "escrow:write"]
+  - ApiKeyAuth: []
+tags:
+  - name: "Escrows"
+    description: "Create and manage escrows"
+  - name: "Funding"
+    description: "Fund escrows via direct mobile money charges"
+  - name: "Releases"
+    description: "Release escrow funds to beneficiaries"
+  - name: "Admin"
+    description: "Administrative state actions (freeze, expire, unfreeze, cancel)"
+  - name: "Ledger"
+    description: "Read-only ledger of escrow movements"
+
+paths:
+  /v1/escrows:
+    post:
+      tags: ["Escrows"]
+      summary: "Create an escrow"
+      description: "Create an escrow container with buyer and seller parties. Currency is limited to 'XAF'."
+      operationId: "CreateEscrow"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEscrowRequest"
+            examples:
+              basic:
+                summary: "Minimal escrow"
+                value:
+                  currency: "XAF"
+                  amount_total: 150000
+                  buyer:
+                    msisdn: "+237670000001"
+                  seller:
+                    org_id: "org_abc123"
+                    payout_msisdn: "+237680000002"
+                  description: "Purchase of artisan furniture"
+                  release_policy: "manual"
+      responses:
+        "201":
+          description: "Escrow created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Escrow"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    get:
+      tags: ["Escrows"]
+      summary: "List escrows"
+      description: "List escrows with filtering and cursor pagination."
+      operationId: "ListEscrows"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - name: "status"
+          in: "query"
+          description: "Filter by escrow status"
+          schema:
+            $ref: "#/components/schemas/EscrowStatus"
+        - name: "buyer_msisdn"
+          in: "query"
+          description: "Filter by buyer MSISDN (E.164)"
+          schema:
+            $ref: "#/components/schemas/Msisdn"
+        - name: "seller_org_id"
+          in: "query"
+          description: "Filter by seller organization id"
+          schema:
+            type: "string"
+        - name: "created_at_from"
+          in: "query"
+          description: "ISO8601 timestamp inclusive lower bound"
+          schema:
+            type: "string"
+            format: "date-time"
+        - name: "created_at_to"
+          in: "query"
+          description: "ISO8601 timestamp exclusive upper bound"
+          schema:
+            type: "string"
+            format: "date-time"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Escrow list"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEscrowsResponse"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/escrows/{escrow_id}:
+    get:
+      tags: ["Escrows"]
+      summary: "Retrieve an escrow"
+      description: "Get a single escrow by id"
+      operationId: "GetEscrow"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/EscrowId"
+      responses:
+        "200":
+          description: "Escrow"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Escrow"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    patch:
+      tags: ["Escrows"]
+      summary: "Update escrow metadata/parties"
+      description: "Update non-financial fields (metadata, descriptions, party details). Financial fields and status cannot be updated here."
+      operationId: "UpdateEscrow"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+        - $ref: "#/components/parameters/EscrowId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEscrowRequest"
+      responses:
+        "200":
+          description: "Escrow updated"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Escrow"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/escrows/{escrow_id}/milestones:
+    post:
+      tags: ["Escrows"]
+      summary: "Create milestones"
+      description: "Create one or more milestones for an existing escrow."
+      operationId: "CreateMilestones"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+        - $ref: "#/components/parameters/EscrowId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMilestonesRequest"
+      responses:
+        "200":
+          description: "Escrow with milestones"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Escrow"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/escrows/{escrow_id}/fund:
+    post:
+      tags: ["Funding"]
+      summary: "Fund an escrow"
+      description: "Initiate a direct debit (buyer MSISDN) to fund an escrow. Provider will confirm asynchronously via webhooks; initial response is 'pending' if async."
+      operationId: "FundEscrow"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+        - $ref: "#/components/parameters/EscrowId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FundEscrowRequest"
+            examples:
+              mtn:
+                summary: "MTN funding"
+                value:
+                  provider: "mtn"
+                  msisdn: "+237670000001"
+                  amount: 150000
+                  confirm: true
+                  metadata:
+                    invoice_id: "inv_789"
+      responses:
+        "201":
+          description: "Funding operation created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FundEscrowResponse"
+        "202":
+          description: "Funding accepted; awaits provider callback"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FundEscrowResponse"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/escrows/{escrow_id}/release:
+    post:
+      tags: ["Releases"]
+      summary: "Release funds from escrow"
+      description: "Create one or more payouts from an escrow to seller(s) or back to buyer using explicit allocations. Supports partial and milestone-based releases."
+      operationId: "ReleaseEscrow"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+        - $ref: "#/components/parameters/EscrowId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReleaseEscrowRequest"
+            examples:
+              partial:
+                summary: "Partial release to seller"
+                value:
+                  allocations:
+                    - destination: "seller"
+                      amount: 50000
+                      milestone_id: "ms_1"
+      responses:
+        "201":
+          description: "Release operation created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseEscrowResponse"
+        "202":
+          description: "Release accepted; awaits provider callback(s)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseEscrowResponse"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/escrows/{escrow_id}/cancel:
+    post:
+      tags: ["Admin"]
+      summary: "Cancel a funded escrow with refund"
+      description: "Cancel an escrow that holds unreleased funds; initiates refund(s) to buyer."
+      operationId: "CancelEscrow"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+        - $ref: "#/components/parameters/EscrowId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelEscrowRequest"
+      responses:
+        "202":
+          description: "Cancellation accepted"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelEscrowResponse"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/escrows/{escrow_id}/expire:
+    post:
+      tags: ["Admin"]
+      summary: "Expire an escrow"
+      description: "Mark an escrow as expired per policy; refund any remaining balance to buyer."
+      operationId: "ExpireEscrow"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+        - $ref: "#/components/parameters/EscrowId"
+      responses:
+        "202":
+          description: "Expiration accepted"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpireEscrowResponse"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/escrows/{escrow_id}/freeze:
+    post:
+      tags: ["Admin"]
+      summary: "Freeze an escrow"
+      description: "Freeze an escrow to block releases (e.g., suspected fraud)."
+      operationId: "FreezeEscrow"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+        - $ref: "#/components/parameters/EscrowId"
+      responses:
+        "200":
+          description: "Escrow frozen"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Escrow"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/escrows/{escrow_id}/unfreeze:
+    post:
+      tags: ["Admin"]
+      summary: "Unfreeze an escrow"
+      description: "Lift freeze and allow releases."
+      operationId: "UnfreezeEscrow"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+        - $ref: "#/components/parameters/EscrowId"
+      responses:
+        "200":
+          description: "Escrow unfrozen"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Escrow"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/escrows/{escrow_id}/ledger:
+    get:
+      tags: ["Ledger"]
+      summary: "Get escrow ledger"
+      description: "Return immutable ledger entries for the escrow."
+      operationId: "GetEscrowLedger"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/EscrowId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Ledger entries"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerResponse"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  securitySchemes:
+    oauth2:
+      type: "oauth2"
+      description: "OAuth2/OIDC via Keycloak; use organization-scoped access tokens."
+      flows:
+        authorizationCode:
+          authorizationUrl: "https://auth.psc/realms/psc/protocol/openid-connect/auth"
+          tokenUrl: "https://auth.psc/realms/psc/protocol/openid-connect/token"
+          scopes:
+            escrow:read: "Read escrows"
+            escrow:write: "Write escrows"
+            org:admin: "Administrative privileges"
+        clientCredentials:
+          tokenUrl: "https://auth.psc/realms/psc/protocol/openid-connect/token"
+          scopes:
+            escrow:read: "Read escrows"
+            escrow:write: "Write escrows"
+            org:admin: "Administrative privileges"
+    ApiKeyAuth:
+      type: "apiKey"
+      in: "header"
+      name: "X-Api-Key"
+      description: "Optional API key for service-to-service calls (use OAuth2 for merchants)."
+
+  parameters:
+    X-Org-Id:
+      name: "X-Org-Id"
+      in: "header"
+      required: true
+      description: "Organization identifier that scopes the request"
+      schema:
+        type: "string"
+    Idempotency-Key:
+      name: "Idempotency-Key"
+      in: "header"
+      required: false
+      description: "Provide to make write operations idempotent"
+      schema:
+        type: "string"
+        maxLength: 256
+    EscrowId:
+      name: "escrow_id"
+      in: "path"
+      required: true
+      description: "Escrow identifier"
+      schema:
+        type: "string"
+    Cursor:
+      name: "cursor"
+      in: "query"
+      required: false
+      description: "Opaque pagination cursor"
+      schema:
+        type: "string"
+    Limit:
+      name: "limit"
+      in: "query"
+      required: false
+      description: "Max items to return (1-200)"
+      schema:
+        type: "integer"
+        minimum: 1
+        maximum: 200
+        default: 50
+
+  responses:
+    BadRequest:
+      description: "Invalid request"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Unauthorized:
+      description: "Authentication required or invalid"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Forbidden:
+      description: "Insufficient privileges"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NotFound:
+      description: "Resource not found"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    Conflict:
+      description: "State conflict"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    UnprocessableEntity:
+      description: "Validation failed"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    RateLimited:
+      description: "Too many requests"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    InternalError:
+      description: "Unexpected server error"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  schemas:
+    Msisdn:
+      type: "string"
+      description: "E.164 formatted phone number"
+    Currency:
+      type: "string"
+      description: "ISO 4217 currency code; restricted to 'XAF' at launch"
+      enum: ["XAF"]
+    Provider:
+      type: "string"
+      description: "Mobile network operator"
+      enum: ["mtn", "orange", "camtel"]
+    EscrowStatus:
+      type: "string"
+      description: "Escrow status"
+      enum: [
+        "draft",
+        "awaiting_funding",
+        "funding",
+        "funded",
+        "frozen",
+        "partially_released",
+        "released",
+        "cancelled",
+        "expired",
+        "disputed"
+      ]
+    ReleasePolicy:
+      type: "string"
+      description: "Release policy"
+      enum: ["manual", "milestone", "deadline"]
+    Metadata:
+      type: "object"
+      description: "Free-form key-value metadata"
+      additionalProperties:
+        type: "string"
+        maxLength: 500
+    Buyer:
+      type: "object"
+      required: ["msisdn"]
+      properties:
+        msisdn: { $ref: "#/components/schemas/Msisdn" }
+    Seller:
+      type: "object"
+      required: ["org_id"]
+      properties:
+        org_id:
+          type: "string"
+          description: "Seller organization id"
+        payout_msisdn:
+          $ref: "#/components/schemas/Msisdn"
+    Milestone:
+      type: "object"
+      required: ["id", "amount", "description"]
+      properties:
+        id:
+          type: "string"
+          description: "Milestone identifier"
+        amount:
+          type: "integer"
+          minimum: 1
+          description: "Amount allocated to this milestone (minor units)"
+        description:
+          type: "string"
+          maxLength: 2000
+          description: "Milestone description"
+        status:
+          type: "string"
+          description: "Milestone status"
+          enum: ["open", "funded", "released", "disputed", "cancelled"]
+    Escrow:
+      type: "object"
+      required: [
+        "id", "status", "currency", "amount_total", "amount_funded",
+        "amount_released", "buyer", "seller", "created_at", "updated_at"
+      ]
+      properties:
+        id:
+          type: "string"
+          description: "Escrow id"
+        status:
+          $ref: "#/components/schemas/EscrowStatus"
+        currency:
+          $ref: "#/components/schemas/Currency"
+        amount_total:
+          type: "integer"
+          minimum: 1
+          description: "Total amount expected to fund (minor units)"
+        amount_funded:
+          type: "integer"
+          minimum: 0
+          description: "Total amount successfully funded"
+        amount_released:
+          type: "integer"
+          minimum: 0
+          description: "Total amount released to beneficiaries"
+        amount_refunded:
+          type: "integer"
+          minimum: 0
+          description: "Total amount refunded to buyer"
+        buyer:
+          $ref: "#/components/schemas/Buyer"
+        seller:
+          $ref: "#/components/schemas/Seller"
+        milestones:
+          type: "array"
+          items: { $ref: "#/components/schemas/Milestone" }
+        release_policy:
+          $ref: "#/components/schemas/ReleasePolicy"
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+        created_at:
+          type: "string"
+          format: "date-time"
+          description: "Creation timestamp"
+        updated_at:
+          type: "string"
+          format: "date-time"
+          description: "Last update timestamp"
+        expires_at:
+          type: "string"
+          format: "date-time"
+          description: "Optional expiry timestamp"
+    CreateEscrowRequest:
+      type: "object"
+      required: ["currency", "amount_total", "buyer", "seller", "release_policy"]
+      properties:
+        currency: { $ref: "#/components/schemas/Currency" }
+        amount_total:
+          type: "integer"
+          minimum: 1
+          description: "Total amount to be funded"
+        buyer: { $ref: "#/components/schemas/Buyer" }
+        seller: { $ref: "#/components/schemas/Seller" }
+        description:
+          type: "string"
+          maxLength: 5000
+          description: "Escrow description"
+        milestones:
+          type: "array"
+          description: "Optional milestones to create"
+          items:
+            type: "object"
+            required: ["amount", "description"]
+            properties:
+              id: { type: "string" }
+              amount:
+                type: "integer"
+                minimum: 1
+                description: "Milestone amount"
+              description:
+                type: "string"
+                maxLength: 2000
+                description: "Milestone description"
+        release_policy: { $ref: "#/components/schemas/ReleasePolicy" }
+        metadata: { $ref: "#/components/schemas/Metadata" }
+    UpdateEscrowRequest:
+      type: "object"
+      description: "Update non-financial fields on an escrow"
+      properties:
+        description:
+          type: "string"
+          maxLength: 5000
+          description: "Escrow description"
+        buyer: { $ref: "#/components/schemas/Buyer" }
+        seller: { $ref: "#/components/schemas/Seller" }
+        metadata: { $ref: "#/components/schemas/Metadata" }
+        expires_at:
+          type: "string"
+          format: "date-time"
+          description: "Optional expiry timestamp"
+    CreateMilestonesRequest:
+      type: "object"
+      required: ["milestones"]
+      properties:
+        milestones:
+          type: "array"
+          items:
+            type: "object"
+            required: ["amount", "description"]
+            properties:
+              id: { type: "string" }
+              amount:
+                type: "integer"
+                minimum: 1
+                description: "Milestone amount"
+              description:
+                type: "string"
+                maxLength: 2000
+                description: "Milestone description"
+    FundEscrowRequest:
+      type: "object"
+      required: ["provider", "msisdn", "amount", "confirm"]
+      properties:
+        provider: { $ref: "#/components/schemas/Provider" }
+        msisdn: { $ref: "#/components/schemas/Msisdn" }
+        amount:
+          type: "integer"
+          minimum: 1
+          description: "Amount to fund now"
+        confirm:
+          type: "boolean"
+          description: "If true, immediately initiate provider charge"
+        metadata: { $ref: "#/components/schemas/Metadata" }
+    FundEscrowResponse:
+      type: "object"
+      required: ["charge_id", "escrow_id", "status", "provider", "msisdn", "amount", "currency", "created_at"]
+      properties:
+        charge_id: { type: "string", description: "Associated charge id" }
+        escrow_id: { type: "string" }
+        status:
+          type: "string"
+          description: "Funding status"
+          enum: ["pending", "succeeded", "failed"]
+        provider: { $ref: "#/components/schemas/Provider" }
+        msisdn: { $ref: "#/components/schemas/Msisdn" }
+        amount: { type: "integer" }
+        currency: { $ref: "#/components/schemas/Currency" }
+        failure_code: { type: "string" }
+        failure_message: { type: "string" }
+        created_at: { type: "string", format: "date-time" }
+    ReleaseAllocation:
+      type: "object"
+      required: ["destination", "amount"]
+      properties:
+        destination:
+          type: "string"
+          description: "Release destination"
+          enum: ["seller", "buyer"]
+        msisdn:
+          $ref: "#/components/schemas/Msisdn"
+        amount:
+          type: "integer"
+          minimum: 1
+          description: "Amount to release"
+        milestone_id:
+          type: "string"
+          description: "Optional milestone id to mark as released"
+    ReleaseEscrowRequest:
+      type: "object"
+      required: ["allocations"]
+      properties:
+        allocations:
+          type: "array"
+          minItems: 1
+          items: { $ref: "#/components/schemas/ReleaseAllocation" }
+        metadata: { $ref: "#/components/schemas/Metadata" }
+    Payout:
+      type: "object"
+      required: ["payout_id", "status", "provider", "msisdn", "amount", "currency"]
+      properties:
+        payout_id: { type: "string" }
+        status:
+          type: "string"
+          enum: ["pending", "succeeded", "failed"]
+        provider: { $ref: "#/components/schemas/Provider" }
+        msisdn: { $ref: "#/components/schemas/Msisdn" }
+        amount: { type: "integer" }
+        currency: { $ref: "#/components/schemas/Currency" }
+        failure_code: { type: "string" }
+        failure_message: { type: "string" }
+    ReleaseEscrowResponse:
+      type: "object"
+      required: ["escrow_id", "payouts", "status_after"]
+      properties:
+        escrow_id: { type: "string" }
+        payouts:
+          type: "array"
+          items: { $ref: "#/components/schemas/Payout" }
+        status_after:
+          type: "string"
+          enum: ["partially_released", "released"]
+    CancelEscrowRequest:
+      type: "object"
+      required: ["reason"]
+      properties:
+        reason:
+          type: "string"
+          maxLength: 1000
+          description: "Reason for cancellation"
+    Refund:
+      type: "object"
+      required: ["refund_id", "amount", "status", "currency"]
+      properties:
+        refund_id: { type: "string" }
+        amount: { type: "integer" }
+        status: { type: "string", enum: ["pending", "succeeded", "failed"] }
+        currency: { $ref: "#/components/schemas/Currency" }
+        failure_code: { type: "string" }
+        failure_message: { type: "string" }
+    CancelEscrowResponse:
+      type: "object"
+      required: ["escrow_id", "refunds", "status_after"]
+      properties:
+        escrow_id: { type: "string" }
+        refunds:
+          type: "array"
+          items: { $ref: "#/components/schemas/Refund" }
+        status_after: { type: "string", enum: ["cancelled"] }
+    ExpireEscrowResponse:
+      type: "object"
+      required: ["escrow_id", "status_after"]
+      properties:
+        escrow_id: { type: "string" }
+        status_after: { type: "string", enum: ["expired"] }
+    LedgerEntry:
+      type: "object"
+      required: ["id", "escrow_id", "type", "direction", "amount", "currency", "balance_after", "occurred_at"]
+      properties:
+        id: { type: "string" }
+        escrow_id: { type: "string" }
+        type:
+          type: "string"
+          description: "Ledger entry type"
+          enum: ["fund", "release", "refund", "fee", "freeze", "unfreeze", "expire", "cancel", "correction"]
+        direction: { type: "string", enum: ["debit", "credit"] }
+        amount: { type: "integer" }
+        currency: { $ref: "#/components/schemas/Currency" }
+        balance_after: { type: "integer" }
+        reference_id: { type: "string" }
+        metadata: { $ref: "#/components/schemas/Metadata" }
+        occurred_at: { type: "string", format: "date-time" }
+    LedgerResponse:
+      type: "object"
+      required: ["data"]
+      properties:
+        data:
+          type: "array"
+          items: { $ref: "#/components/schemas/LedgerEntry" }
+        next_cursor: { type: "string" }
+    ListEscrowsResponse:
+      type: "object"
+      required: ["data"]
+      properties:
+        data:
+          type: "array"
+          items: { $ref: "#/components/schemas/Escrow" }
+        next_cursor: { type: "string" }
+    EscrowEvent:
+      type: "object"
+      required: ["id", "type", "created_at", "data"]
+      properties:
+        id: { type: "string" }
+        type: { type: "string" }
+        created_at: { type: "string", format: "date-time" }
+        data:
+          type: "object"
+          properties:
+            object: { type: "string", enum: ["escrow"] }
+            escrow: { $ref: "#/components/schemas/Escrow" }
+    ErrorResponse:
+      type: "object"
+      required: ["error"]
+      properties:
+        error:
+          type: "object"
+          required: ["type", "message"]
+          properties:
+            type:
+              type: "string"
+              enum: [
+                "invalid_request",
+                "authentication_error",
+                "authorization_error",
+                "idempotency_error",
+                "provider_declined",
+                "insufficient_funds",
+                "escrow_frozen",
+                "dispute_open",
+                "rate_limited",
+                "internal"
+              ]
+            message: { type: "string" }
+            code: { type: "string" }
+            param: { type: "string" }

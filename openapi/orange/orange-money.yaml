@@ -1,0 +1,1887 @@
+openapi: 3.0.3
+info:
+  title: 💰Orange Money API
+  description: |-
+    Orange Money API allows to process variety of mobile money operations such as cashin, cash out, merchant payment, transfer and more.   .
+
+    # Errors
+
+    The APIs use the HTTP standard  status codes to indicate the success or failure of the API call. The body of the response will be JSON in the following format:
+
+    ```
+    {
+     "type": "bad-request", 
+     "title": "Bad Request", 
+     "instance": "/api/eWallet/v1/payments", 
+     "status": "400", 
+     "code": "2000" 
+     "detail": "Customer account does not exist"
+    }
+    ```
+
+    # 🔐 Authentication
+
+     Our APIs uses the OAuth 2.0 protocol for authentication/authorization. 
+    All access to our APIs requires authentication. Authenticated requests require an access_token. These tokens are unique to a user and should be stored securely. Access tokens may expire at any time in the future.
+      - How to receive your access_token ? 
+    ```
+     curl -X POST 
+     https://api.orange-sonatel.com/oauth/token 
+     -d client_id={your_client_id} 
+     -d client_secret={your_secret} 
+     -d grant_type=client_credentials 
+    ```
+    
+    # Sensitive data 
+    In order to send sensitive data such as `pincode`, public key should be used to encrypt them. 
+    For tests purpose, you can use online websites such as [online rsa encryption decryption](https://www.devglan.com/online-tools/rsa-encryption-decryption) to encrypt the PIN code with the public key before sending it. 
+
+    # Rate Limiting
+
+     In sandbox environment, you can make `60 requests` per minute. 
+
+    # 🔗 Base URL
+
+    All URLs referenced in the API documentation have the following base:
+
+    - __Sandbox :__ https://api.sandbox.orange-sonatel.com
+
+    - __Live :__ https://api.orange-sonatel.com
+
+    All APIs are served over HTTPS. To ensure data privacy, unencrypted HTTP is not supported.
+
+    # 📚 Error Codes
+
+
+    | Category      | HTTP status code| error code | error message                   |
+    | :---          |     :---:       |       ---: |      ---:                       |
+    | __Business error__| 400         |   2000     | Customer account does not exist | 
+    |               |                 |   2001     | Customer msisdn is invalid      |   
+    |               |                 |   2010     | Your PIN should be changed      |      
+    |               |                 |   2011     | Invalid PIN code, 2 remaining tentatives left  |      
+    |               |                 |   2012     | Invalid PIN code, 1 remaining tentative left|      
+    |               |                 |   2013     | Invalid PIN code, your account is blocked       |      
+    |               |                 |   2020     | Balance insufficient            |      
+    |               |                 |   2021     | Balance insufficient for payer  |      
+    |               |                 |   2022     | Balance insufficient for payee      |      
+    |               |                 |   2023     | Balance maximal                 |      
+    |               |                 |   2024     | Balance maximal for payer       |      
+    |               |                 |   2025     | Balance maximal for payee       |
+    |               |                 |   2030     | Balance maximal for payee       |
+    |               |                 |   2031     | Balance insufficient for payer  |      
+    |               |                 |   2040     | Balance insufficient for payee   |      
+    |               |                 |   2041     | Transaction not allowed          |      
+    |               |                 |   2042     | Transaction not allowed for payer|      
+    |               |                 |   2043     | Transaction not allowed for payee|
+    |               |                 |   2050     | OTP transaction failed    |
+    |               |                 |   2051     | OTP Transaction not found |
+    |               |                 |   2052     | OTP is expired or already used or invalid |
+    |               |                 |   4003     | Failed to decrypt received message, Invalid/Revoked public key was used for encryption. Please retrieve a new public key|
+    |               |                 |   4004     | Invalid QR Code, it's expired|
+    |               |                 |   4099     | Bad request, please check passed parameters|
+    | __Bad Parameter__ | 400         |   20       | Invalid input parameter value   |      
+    |               |                 |   21       | Missing body                    |      
+    |               |                 |   22       | Invalid body                    |   
+    |               |                 |   23       | Missing body field              |   
+    |               |                 |   24       | Invalid body field              |   
+    |               |                 |   25       | Missing header                  |   
+    |               |                 |   26       | Invalid header value            |   
+    |               |                 |   27       | Missing query-string parameter  |   
+    |               |                 |   28       | Invalid query-string parameter value|   
+    | __Authentication__| 401             |   10       | Full authentication is required to access this resource |    
+    | __Forbidden__ | 403             |   11       | Access Forbidden                       |      
+    | __Resource Not Found__ | 404    |   6        | Ressource not found             |      
+    |__Internal Server Error__| 500   |     50      | Internal Server Error
+    |               |                 |     51      | Due to some technical problems, your request is in pending state.
+    |                         |    |     1      | Your request cannot be processed at this time, please try again later. |                                 |
+    |  __Bad Gateway__                      | 502    |     2      |  Your request cannot be processed at this time, please try again later.   |                                 |
+    |  __Service Unavailable__                      | 503    |    5       | Your request cannot be processed at this time, please try again later.     |                                 |
+
+
+
+
+    ---
+    ---
+    **NB:** It's recommended for **pending** transactions to check status from search API (final status will be available at the latest 24h after).
+    # Tutorials : How to test APIs ?
+
+    In order to test our APIs, after getting your account credentials (client_id/client_secret) you need to follow these steps :
+
+    1. Retrieve a token
+    2. __(Eventually)__ for some operations (such as cashin ...) [encrypt](https://www.devglan.com/online-tools/rsa-encryption-decryption) your pin code using the public key.
+    3. Send the request. Below an example (for cashin):
+
+    ```
+    {
+      "partner": {
+        "idType": "MSISDN",
+        "id": "781234567",    
+        "encryptedPinCode": "{{ENCRYPTED_PINCODE}}"
+        },
+      "customer": {
+        "idType": "MSISDN",
+        "id": "771234567"
+      },
+      "amount": {
+        "value": 1,
+        "unit": "XOF"
+      },
+      "reference" : "733966e4-988b-4ce6-b1e4-d0ad95e8a98" ,
+      "receiveNotification": true,
+      "metadata" : {
+        "senderFirstName" : "Mr",
+        "senderLastName" : "API"
+      }
+    }
+    ```
+
+    # Callbacks reception
+    ```  
+    POST /<your_callback_endpoint>
+    Host: https://<your_server>
+    Content-Type: application/json
+    Authorization: Basic <apiKey>     <= Optionally
+
+    {
+      "amount": {
+        "value": 2,
+        "unit": "XOF"
+      },
+      "partner": {
+        "idType": "CODE",
+        "id": "12345"
+      },
+      "customer": {
+        "idType": "MSISDN",
+        "id": "786258731"
+      },
+      "reference" : "eaed4551-8f07-497d-afb4-ded49d9e92d6",
+      "type" : "MERCHANT_PAYMENT",
+      "channel": "API",
+       "transactionId" : "MP220928.1029.C58502",
+      "paymentMethod": "QRCODE",
+      "status": "SUCCESS"
+    }```
+  contact:
+    email: partenaires.orangemoney@orange-sonatel.com
+  license:
+    name: Orange SN 2.0
+    url: https://www.orange.sn/licenses/LICENSE-2.0.html
+  version: v1.0.0
+servers:
+  - url: https://api.sandbox.orange-sonatel.com
+    description: Sandbox
+  - url: https://api.orange-sonatel.com
+    description: Prod
+tags:
+  - name: Cash In
+    description: Cashin In APIs
+  - name: General Public Key
+    description: General Public Key used to encrypt pincode
+  - name: Merchant Payment
+    description: Merchant Payment APIs
+  - name: Webhooks
+    description: Webhooks APIs
+  - name: Mobile Money Account
+    description: Mobile Money Account APIs
+  - name: Transaction Search
+    description: Transaction search APIs
+paths:
+  /api/assignments/v1/partner/sim-cards:
+    get:
+      tags:
+        - Sim Assignment (sandbox only)
+      summary: 'Get test numbers '
+      description: |-
+        Generate new assignment or Get msisdns assigned to the partner. 
+         Specify the number of msisdns to assign by type (MERCHANT, CUSTOMER, RETAILER).
+      operationId: Get partner assignments
+      parameters:
+        - name: nbCustomers
+          in: query
+          description: Number of msisdns, of type CUSTOMER (max=2)
+          allowEmptyValue: false
+          schema:
+            type: integer
+            format: int64
+            default: 1
+        - name: nbMerchants
+          in: query
+          description: Number of msisdns, of type MERCHANT (max=1)
+          allowEmptyValue: false
+          schema:
+            type: integer
+            format: int64
+            default: 0
+        - name: nbRetailers
+          in: query
+          description: Number of msisdns, of type RETAILER (max=1)
+          allowEmptyValue: false
+          schema:
+            type: integer
+            format: int64
+            default: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimCards'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      deprecated: false
+  /api/notification/v1/merchantcallback:
+    get:
+      tags:
+        - Webhooks
+      summary: ' Get merchant CallBack'
+      description: This operation allows to retrieve the configured callbacks.
+      operationId: Get CallBack Merchant
+      parameters:
+        - name: code
+          in: query
+          description: merchant code
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number of the list of callback records to retrieve
+          schema:
+            type: integer
+            format: int32
+            default: 0
+        - name: size
+          in: query
+          description: Number of callback records to retrieve
+          schema:
+            type: integer
+            format: int32
+            default: 20
+      responses:
+        '200':
+          description: Success
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MerchantCallBack'
+        '401':
+          description: Unauthorized
+          content: {}
+        '403':
+          description: Forbidden
+          content: {}
+        '404':
+          description: Not Found
+          content: {}
+    post:
+      tags:
+        - Webhooks
+      summary: Set Merchant CallBack
+      description: 'This operation allows to merchants/retailers to set callbacks.  '
+      operationId: Set CallBack Merchant
+      requestBody:
+        description: merchantCallBack
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantCallBack'
+        required: true
+      responses:
+        '200':
+          description: Success
+          content: {}
+        '201':
+          description: Created
+          content: {}
+        '401':
+          description: Unauthorized
+          content: {}
+        '403':
+          description: Forbidden
+          content: {}
+        '404':
+          description: Not Found
+          content: {}
+      x-codegen-request-body-name: merchantCallBack
+  /api/eWallet/v1/account:
+    get:
+      tags:
+        - Mobile Money Account
+      summary: Get User profile by msisdn
+      description: 'This operation retrieves the user profile by the msisdn. '
+      operationId: Get User profile by msisdn
+      parameters:
+        - name: msisdn
+          in: query
+          description: Msisdn
+          required: true
+          style: form
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: customer type
+          required: false
+          style: form
+          schema:
+            type: string
+            enum:
+              - customer
+              - retailer
+        - name: walletType
+          in: query
+          description: wallet type
+          required: false
+          style: form
+          schema:
+            type: string
+            enum:
+              - bonus
+              - international
+              - principal
+              - salaire
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: 'Bad Request List of supported error codes: - 20: Invalid URL parameter value - 21: Missing body - 22: Invalid body - 23: Missing body field - 24: Invalid body field - 25: Missing header - 26: Invalid header value - 27: Missing query-string parameter - 28: Invalid query-string parameter value'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Method Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 'Not Found  List of supported error codes: - 60 : Resource not found'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Unprocessable entity List of supported error codes: - 50 : Request cannot be processed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - Mobile Money Account
+      summary: Change Pin Code
+      description: 'This operation allows to change the pin code. '
+      operationId: Change Pin Code
+      parameters:
+        - name: msisdn
+          in: query
+          description: Msisdn
+          required: true
+          style: form
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: customer type
+          required: false
+          style: form
+          schema:
+            type: string
+            enum:
+              - customer
+              - retailer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePinCode'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '204':
+          description: No Content
+        '400':
+          description: 'Bad Request List of supported error codes: - 20: Invalid URL parameter value - 21: Missing body - 22: Invalid body - 23: Missing body field - 24: Invalid body field - 25: Missing header - 26: Invalid header value - 27: Missing query-string parameter - 28: Invalid query-string parameter value'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Method Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 'Not Found  List of supported error codes: - 60 : Resource not found'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Unprocessable entity List of supported error codes: - 50 : Request cannot be processed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/eWallet/v1/account/customer/balance:
+    post:
+      tags:
+        - Mobile Money Account
+      summary: Get Customer Balance
+      description: This operation retrieves the balance of the customer's account.
+      operationId: Get Customer Balance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Money'
+        '201':
+          description: Created
+        '400':
+          description: 'Bad Request List of supported error codes: - 20: Invalid URL parameter value - 21: Missing body - 22: Invalid body - 23: Missing body field - 24: Invalid body field - 25: Missing header - 26: Invalid header value - 27: Missing query-string parameter - 28: Invalid query-string parameter value'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Method Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 'Not Found  List of supported error codes: - 60 : Resource not found'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Unprocessable entity List of supported error codes: - 50 : Request cannot be processed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/eWallet/v1/account/retailer/balance:
+    post:
+      tags:
+        - Mobile Money Account
+      summary: Get Retailer Balance
+      description: 'This operation retrieves the balance of the retailer''s account. '
+      operationId: Get Retailer Balance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Money'
+        '201':
+          description: Created
+        '400':
+          description: 'Bad Request List of supported error codes: - 20: Invalid URL parameter value - 21: Missing body - 22: Invalid body - 23: Missing body field - 24: Invalid body field - 25: Missing header - 26: Invalid header value - 27: Missing query-string parameter - 28: Invalid query-string parameter value'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Method Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 'Not Found  List of supported error codes: - 60 : Resource not found'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Unprocessable entity List of supported error codes: - 50 : Request cannot be processed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/eWallet/v1/accounts:
+    get:
+      tags:
+        - Mobile Money Account
+      summary: Search User profile by criteria
+      description: 'This operation allows to search for a given user profile by criteria (msisdn, firstName, lastName). Specific business errors for current operation will be encapsulated in  HTTP Response 422 Unprocessable entity '
+      operationId: Search User profile by criteria
+      parameters:
+        - name: msisdn
+          in: query
+          description: Msisdn
+          required: true
+          style: form
+          schema:
+            type: string
+        - name: firstName
+          in: query
+          description: The first name
+          required: true
+          style: form
+          schema:
+            type: string
+        - name: The last name
+          in: query
+          description: The last name
+          required: true
+          style: form
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: Customer type
+          required: false
+          style: form
+          schema:
+            type: string
+            enum:
+              - customer
+              - retailer
+        - name: fields
+          in: query
+          description: fields
+          required: false
+          style: form
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: 'Bad Request List of supported error codes: - 20: Invalid URL parameter value - 21: Missing body - 22: Invalid body - 23: Missing body field - 24: Invalid body field - 25: Missing header - 26: Invalid header value - 27: Missing query-string parameter - 28: Invalid query-string parameter value'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Method Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 'Not Found  List of supported error codes: - 60 : Resource not found'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Unprocessable entity List of supported error codes: - 50 : Request cannot be processed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/eWallet/v1/bulkcashins:
+    post:
+      tags:
+        - Cash In
+      summary: Bulk Cash In
+      description: |
+        This operation allows you to credit specific amounts on several customer accounts in a single request. The operation is asynchronous. A specific bulk Id is sent back when the request is received at the server side; and at the end of the transaction, a notification is sent to the client through the passed callback URL. 
+         ## Notification Response : 
+                  {
+                    "type" :  "string", 
+                    "reference" : "UUID", 
+                    "status" : "SUCCESS", 
+                    "description"  : "string", 
+                    "date" : "date-time", 
+                    "metadata" : "string"
+                }
+      operationId: Bulk Cash In
+      parameters:
+        - name: X-Callback-Url
+          in: header
+          description: The URL where the server will return information at the end of the operation.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkResponse'
+        '201':
+          description: Created
+        '400':
+          description: 'Bad Request List of supported error codes: - 20: Invalid URL parameter value - 21: Missing body - 22: Invalid body - 23: Missing body field - 24: Invalid body field - 25: Missing header - 26: Invalid header value - 27: Missing query-string parameter - 28: Invalid query-string parameter value'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Method Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 'Not Found  List of supported error codes: - 60 : Resource not found'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Unprocessable entity List of supported error codes: - 50 : Request cannot be processed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/eWallet/v1/cashins:
+    post:
+      tags:
+        - Cash In
+      summary: Cash In
+      description: 'This operation allows to perform a cash in. In reality, a customer gives to a retailer cash money; the retailer makes a Cash-in request to transfer electronic money from his wallet to the customer wallet. In other words, it is the positioning of an amount in a customer account by a retailer. '
+      operationId: Cash In
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '201':
+          description: Created
+        '400':
+          description: 'Bad Request List of supported error codes: - 20: Invalid URL parameter value - 21: Missing body - 22: Invalid body - 23: Missing body field - 24: Invalid body field - 25: Missing header - 26: Invalid header value - 27: Missing query-string parameter - 28: Invalid query-string parameter value'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Method Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 'Not Found  List of supported error codes: - 60 : Resource not found'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Unprocessable entity List of supported error codes: - 50 : Request cannot be processed'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/account/v1/publicKeys:
+    get:
+      tags:
+        - General Public Key
+      summary: Public Key
+      description: This operation allows to retrieve our general public key to encrypt sensitive data (such as pincode). For your information, by default, the public key doesn't have a validity period, but it can be revoked anytime if need be and a specific error code is sent for revoked keys (4003)
+      operationId: Public Key
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicKey'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+  /api/eWallet/v4/qrcode:
+    post:
+      tags:
+        - Merchant Payment
+      summary: Generate QR Code
+      description: 'This operation allows to generate qrCode from Orange Money.  Specific business errors for current operation will be encapsulated in  HTTP Response 422 Unprocessable entity '
+      operationId: Generate Secure QR Code from Orange Money()
+      parameters:
+        - name: X-Api-Key
+          in: header
+          description: X-Api-Key
+          required: false
+          schema:
+            type: string
+        - name: X-Callback-Url
+          in: header
+          description: X-Callback-Url
+          required: false
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchantBody'
+      responses:
+        '200':
+          description: Success
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Qr'
+        '201':
+          description: Created
+        '400':
+          description: 'Bad Request List of supported error codes: - 20: Invalid URL parameter value - 21: Missing body - 22: Invalid body - 23: Missing body field - 24: Invalid body field - 25: Missing header - 26: Invalid header value - 27: Missing query-string parameter - 28: Invalid query-string parameter value'
+          content:
+            application/problem+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Error'
+        '401':
+          description: Method Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Error'
+        '403':
+          description: Access Forbidden
+          content:
+            application/problem+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Error'
+        '404':
+          description: 'Not Found  List of supported error codes: - 60 : Resource not found'
+          content:
+            application/problem+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Error'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/problem+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Unprocessable entity List of supported error codes: - 50 : Request cannot be processed'
+          content:
+            application/problem+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Error'
+  /api/eWallet/v1/transactions:
+    get:
+      tags:
+        - Transaction Search
+      summary: Get transactions
+      description: 'This operation is used to retrieve the transaction history. '
+      operationId: Get transactions
+      parameters:
+        - name: bulkId
+          in: query
+          description: bulk Id
+          required: false
+          style: form
+          schema:
+            type: string
+            format: uuid
+        - name: fromDateTime
+          in: query
+          description: Requested start date and time
+          required: false
+          style: form
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          description: Requested page number (default is 0, min is 0)
+          required: false
+          style: form
+          schema:
+            type: integer
+            format: int32
+        - name: reference
+          in: query
+          description: reference
+          required: false
+          style: form
+          schema:
+            type: string
+        - name: size
+          in: query
+          description: Requested number of resources to be provided in response requested by client (default is 20, max is 500 )
+          required: false
+          style: form
+          schema:
+            type: integer
+            format: int32
+        - name: status
+          in: query
+          description: Transaction status
+          required: false
+          style: form
+          schema:
+            type: string
+            enum:
+              - ACCEPTED
+              - CANCELLED
+              - FAILED
+              - INITIATED
+              - PENDING
+              - PRE_INITIATED
+              - REJECTED
+              - SUCCESS
+        - name: toDateTime
+          in: query
+          description: Requested end date and time
+          required: false
+          style: form
+          schema:
+            type: string
+            format: date-time
+        - name: transactionId
+          in: query
+          description: transaction ID
+          required: false
+          style: form
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: Transaction type
+          required: false
+          style: form
+          schema:
+            type: string
+            enum:
+              - CASHIN
+              - CASHOUT
+              - CASHOUT_ONE_STEP
+              - MERCHANT_PAYMENT
+              - TRANSFER_WITH_CODE
+              - WEB_PAYMENT
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+        '400':
+          description: 'Bad Request List of supported error codes: - 20: Invalid URL parameter value - 21: Missing body - 22: Invalid body - 23: Missing body field - 24: Invalid body field - 25: Missing header - 26: Invalid header value - 27: Missing query-string parameter - 28: Invalid query-string parameter value'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Method Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 'Not Found  List of supported error codes: - 60 : Resource not found'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Unprocessable entity List of supported error codes: - 50 : Request cannot be processed'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/eWallet/v1/transactions/{transactionId}/status:
+    get:
+      tags:
+        - Transaction Search
+      summary: Get transaction Status
+      description: This operation retrieves the status of a transaction.
+      operationId: Get transaction Status
+      parameters:
+        - name: transactionId
+          in: path
+          description: Transaction ID
+          required: true
+          style: simple
+          schema:
+            maxLength: 20
+            minLength: 20
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/State'
+        '400':
+          description: 'Bad Request List of supported error codes: - 20: Invalid URL parameter value - 21: Missing body - 22: Invalid body - 23: Missing body field - 24: Invalid body field - 25: Missing header - 26: Invalid header value - 27: Missing query-string parameter - 28: Invalid query-string parameter value'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Method Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access Forbidden
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 'Not Found  List of supported error codes: - 60 : Resource not found'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Method Not Allowed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 'Unprocessable entity List of supported error codes: - 50 : Request cannot be processed'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    SimCards:
+      title: SimCardRef
+      required:
+        - msisdn
+      type: object
+      properties:
+        expiresAt:
+          type: string
+          format: date-time
+        grade:
+          type: string
+          enum:
+            - FULL
+            - LITE
+        msisdn:
+          type: string
+          example: '771234567'
+        pinCode:
+          type: string
+          example: '1234'
+        type:
+          type: string
+          enum:
+            - MERCHANT
+            - RETAILER
+            - CUSTOMER
+            - HYBRID
+    BulkResponse:
+      title: BulkResponse
+      required:
+        - bulkId
+        - status
+      type: object
+      properties:
+        bulkId:
+          type: string
+          description: bulk id
+          format: uuid
+        description:
+          type: string
+        status:
+          type: string
+          description: bulk status
+          enum:
+            - PENDING
+            - REJECTED
+            - TERMINATED
+    customer:
+      description: customer related party information
+      $ref: '#/components/schemas/CustomerRef'
+    metadata:
+      type: object
+      additionalProperties:
+        type: string
+      description: Set of key-value pairs (limited to 10) that you can attach to an object. This can be useful for storing additional information about the object in a structured format
+      example: '{}'
+    partner:
+      description: partner related party information
+      $ref: '#/components/schemas/RelatedParty'
+    receiveNotification:
+      type: boolean
+      description: either to receive or not sms notification, default value is false
+      example: false
+    reference:
+      maxLength: 50
+      minLength: 0
+      type: string
+      description: external transaction reference used to reference the transaction in the calling party's system.
+      example: 0e3efaa9-2734-49c8-b43d-3884a62b8274
+    requestDate:
+      type: string
+      description: The date and time when the transaction is created at client side
+      format: date-time
+    ChangePinCode:
+      title: ChangePinCode
+      required:
+        - encryptedNewPinCode
+        - encryptedPinCode
+      type: object
+      properties:
+        encryptedNewPinCode:
+          maxLength: 344
+          minLength: 344
+          type: string
+          description: Base64 encrypted new pincode
+        encryptedPinCode:
+          maxLength: 344
+          minLength: 344
+          type: string
+          description: Base64 encrypted  pincode
+    Customer:
+      title: Customer
+      required:
+        - id
+        - idType
+      type: object
+      properties:
+        id:
+          pattern: ^(\d{9})$
+          type: string
+          description: party id such as msisdn value
+          example: '771234567'
+        idType:
+          type: string
+          description: party id type
+          example: MSISDN
+          enum:
+            - CODE
+            - MSISDN
+        walletType:
+          type: string
+          description: Wallet Type
+          example: PRINCIPAL
+          enum:
+            - INTERNATIONAL
+            - PRINCIPAL
+    CustomerRef:
+      title: CustomerRef
+      required:
+        - encryptedPinCode
+        - id
+        - idType
+      type: object
+      properties:
+        encryptedPinCode:
+          maxLength: 344
+          minLength: 344
+          type: string
+          description: Base64 encrypted pincode, using its dedicated public key
+          example: Bs39XVxP0s[..]A==
+        id:
+          pattern: ^(\d{9})$
+          type: string
+          description: party id such as msisdn value
+          example: '771234567'
+        idType:
+          type: string
+          description: party id type
+          example: MSISDN
+          enum:
+            - CODE
+            - MSISDN
+        walletType:
+          type: string
+          description: Wallet Type
+          example: PRINCIPAL
+          enum:
+            - PRINCIPAL
+    Error:
+      title: Error
+      required:
+        - detail
+        - instance
+        - status
+        - title
+        - type
+      type: object
+      properties:
+        code:
+          type: string
+          example: '2000'
+        detail:
+          type: string
+        instance:
+          type: string
+          example: /api/eWallet/v1/payments
+        status:
+          type: string
+          example: '400'
+        title:
+          type: string
+          example: Bad Request
+        type:
+          type: string
+          example: https://developers.preprod.orange-sonatel.com/documentation/errors/bad-request
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+    FullCustomer:
+      title: FullCustomer
+      required:
+        - firstName
+        - id
+        - idType
+        - lastName
+      type: object
+      properties:
+        encryptedPinCode:
+          maxLength: 344
+          minLength: 344
+          type: string
+          description: Base64 encrypted pincode, using its dedicated public key
+          example: Bs39XVxP0s[..]A==
+        firstName:
+          maxLength: 50
+          minLength: 2
+          type: string
+          description: customer firstName
+        id:
+          pattern: ^(\d{9})$
+          type: string
+          description: party id such as msisdn value
+          example: '771234567'
+        idType:
+          type: string
+          description: party id type
+          example: MSISDN
+          enum:
+            - CODE
+            - MSISDN
+        lastName:
+          maxLength: 50
+          minLength: 2
+          type: string
+          description: customer lastName
+        walletType:
+          type: string
+          description: Wallet Type
+          example: PRINCIPAL
+          enum:
+            - INTERNATIONAL
+            - PRINCIPAL
+    FullPartner:
+      title: FullPartner
+      required:
+        - encryptedPinCode
+        - id
+        - idType
+      type: object
+      properties:
+        encryptedPinCode:
+          maxLength: 344
+          minLength: 344
+          type: string
+          description: Base64 encrypted pincode, using its dedicated public key
+          example: Bs39XVxP0s[..]A==
+        id:
+          pattern: ^(\d{9})$
+          type: string
+          description: party id such as msisdn value
+          example: '771234567'
+        idType:
+          type: string
+          description: party id type
+          example: MSISDN
+          enum:
+            - CODE
+            - MSISDN
+        walletType:
+          type: string
+          description: Wallet Type
+          example: PRINCIPAL
+          enum:
+            - INTERNATIONAL
+            - PRINCIPAL
+    MerchantBody:
+      title: MerchantBody
+      required:
+        - code
+        - name
+      type: object
+      properties:
+        amount:
+          $ref: '#/components/schemas/MoneyReq'
+        callbackCancelUrl:
+          type: string
+          description: Partner url to call in case of cancelled payment
+          example: https://my-cancel-url.com
+        callbackSuccessUrl:
+          type: string
+          description: Partner url to call in case of successful payment
+          example: https://my-success-url.com
+        code:
+          type: string
+          example: 123456
+          description: merchant code
+          pattern: ^\d{6}$
+        metadata:
+          type: object
+          example: {}
+          description: Set of key-value pairs (limited to 10) that you can attach to an object. This can be useful for storing additional information about the object in a structured format
+          additionalProperties:
+            type: string
+        name:
+          type: string
+          description: name of the merchant
+        validity:
+          type: integer
+          description: qr validity (seconds), the max accepted is 86400 seconds
+          format: int64
+          example: 15
+    Money:
+      title: Money
+      required:
+        - unit
+        - value
+      type: object
+      properties:
+        unit:
+          type: string
+          description: amount currency, supported currencies are [XOF]
+          enum:
+            - XOF
+        value:
+          minimum: 1
+          exclusiveMinimum: false
+          type: number
+          description: a positive number (>= 1 XOF ) representing the amount.
+          format: float
+    MoneyReq:
+      title: MoneyReq
+      required:
+        - unit
+        - value
+      type: object
+      properties:
+        unit:
+          type: string
+          description: amount currency, supported currencies are [XOF]
+          enum:
+            - XOF
+        value:
+          minimum: 1
+          exclusiveMinimum: false
+          type: number
+          description: a positive number (>= 1 XOF ) representing the amount.
+          format: float
+    Partner:
+      title: Partner
+      required:
+        - encryptedPinCode
+        - id
+        - idType
+      type: object
+      properties:
+        encryptedPinCode:
+          maxLength: 344
+          minLength: 344
+          type: string
+          description: Base64 encrypted pincode, using its dedicated public key
+          example: Bs39XVxP0s[..]A==
+        id:
+          pattern: ^(\d{9})$
+          type: string
+          description: party id such as msisdn value
+          example: '771234567'
+        idType:
+          type: string
+          description: party id type
+          example: MSISDN
+          enum:
+            - CODE
+            - MSISDN
+        walletType:
+          type: string
+          description: Wallet Type
+          example: PRINCIPAL
+          enum:
+            - INTERNATIONAL
+            - PRINCIPAL
+    PublicKey:
+      title: PublicKey
+      required:
+        - key
+        - keyId
+        - keySize
+        - keyType
+      type: object
+      properties:
+        key:
+          type: string
+          description: the general public key, used for encryption
+        keyId:
+          type: string
+          description: Id of the Key
+        keySize:
+          type: integer
+          description: Size of the key (2048)
+          format: int32
+        keyType:
+          type: string
+          description: Type of the key
+          enum:
+            - RSA
+    Qr:
+      title: Qr
+      type: object
+      properties:
+        deepLink:
+          type: string
+        qrCode:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        validity:
+          type: integer
+          format: int64
+    RelatedParty:
+      title: RelatedParty
+      required:
+        - id
+        - idType
+      type: object
+      properties:
+        id:
+          pattern: ^(\d{9})$
+          type: string
+          description: party id such as msisdn value
+          example: '771234567'
+        idType:
+          type: string
+          description: party id type
+          example: MSISDN
+          enum:
+            - CODE
+            - MSISDN
+        walletType:
+          type: string
+          description: Wallet Type
+          example: PRINCIPAL
+          enum:
+            - PRINCIPAL
+    MerchantCallBack:
+      title: MerchantCallBack
+      type: object
+      properties:
+        apiKey:
+          type: string
+          description: Authentication of callback url
+        callbackUrl:
+          type: string
+          description: The URL where the server will return information at the end of the operation.
+        code:
+          type: string
+          description: merchant code or merchant(partner)number
+        name:
+          type: string
+          description: Name of the merchant
+    State:
+      title: State
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ACCEPTED
+            - CANCELLED
+            - FAILED
+            - INITIATED
+            - PENDING
+            - PRE_INITIATED
+            - REJECTED
+            - SUCCESS
+    Transaction:
+      title: Transaction
+      required:
+        - amount
+        - customer
+        - partner
+      type: object
+      properties:
+        amount:
+          description: transaction amount
+          $ref: '#/components/schemas/Money'
+        channel:
+          type: string
+          description: transaction channel
+        createdAt:
+          type: string
+          description: The date and time when the transaction occurred
+          format: date-time
+        customer:
+          description: customer related party information
+          $ref: '#/components/schemas/FullCustomer'
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Set of key-value pairs (limited to 10) that you can attach to an object. This can be useful for storing additional information about the object in a structured format
+          example: '{}'
+        partner:
+          description: partner related party information
+          $ref: '#/components/schemas/FullPartner'
+        receiveNotification:
+          type: boolean
+          description: either to receive or not sms notification, default value is false
+          example: false
+        reference:
+          maxLength: 50
+          minLength: 0
+          type: string
+          description: external transaction reference used to reference the transaction in the calling party's system.
+          example: 0e3efaa9-2734-49c8-b43d-3884a62b8274
+        requestDate:
+          type: string
+          description: The date and time when the transaction is created at client side
+          format: date-time
+        status:
+          type: string
+          description: transaction status
+          enum:
+            - ACCEPTED
+            - CANCELLED
+            - FAILED
+            - INITIATED
+            - PENDING
+            - PRE_INITIATED
+            - REJECTED
+            - SUCCESS
+        statusReason:
+          type: string
+          description: transaction status reason
+        transactionId:
+          maxLength: 50
+          minLength: 0
+          type: string
+          description: unique transaction id generated at server side
+        type:
+          type: string
+          description: transaction type
+          enum:
+            - CASHIN
+            - CASHOUT
+            - CASHOUT_ONE_STEP
+            - MERCHANT_PAYMENT
+            - TRANSFER_WITH_CODE
+            - WEB_PAYMENT
+        updatedAt:
+          type: string
+          description: The date and time when the transaction was last updated
+          format: date-time
+    TransactionRequest:
+      title: TransactionRequest
+      required:
+        - amount
+        - customer
+        - partner
+      type: object
+      properties:
+        amount:
+          description: transaction amount
+          $ref: '#/components/schemas/Money'
+        customer:
+          description: customer related party information
+          $ref: '#/components/schemas/Customer'
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Set of key-value pairs (limited to 10) that you can attach to an object. This can be useful for storing additional information about the object in a structured format
+          example: '{}'
+        partner:
+          description: partner related party information
+          $ref: '#/components/schemas/Partner'
+        receiveNotification:
+          type: boolean
+          description: either to receive or not sms notification, default value is false
+          example: false
+        reference:
+          maxLength: 50
+          minLength: 0
+          type: string
+          description: external transaction reference used to reference the transaction in the calling party's system.
+          example: 0e3efaa9-2734-49c8-b43d-3884a62b8274
+        requestDate:
+          type: string
+          description: The date and time when the transaction is created at client side
+          format: date-time
+    TransactionResponse:
+      title: TransactionResponse
+      required:
+        - status
+        - transactionId
+      type: object
+      properties:
+        description:
+          type: string
+        reference:
+          type: string
+          description: Transaction reference
+          example: '123456789'
+        requestId:
+          type: string
+          description: Request Id generated at server side
+          example: 1234.5678.91023
+        status:
+          type: string
+          description: Transaction status
+          example: SUCCESS
+          enum:
+            - ACCEPTED
+            - CANCELLED
+            - FAILED
+            - INITIATED
+            - PENDING
+            - PRE_INITIATED
+            - REJECTED
+            - SUCCESS
+        transactionId:
+          type: string
+          description: Unique transaction id generated at server side
+          example: CI1234.5678.91023
+    User:
+      title: User
+      required:
+        - encryptedPinCode
+        - id
+        - idType
+      type: object
+      properties:
+        encryptedPinCode:
+          maxLength: 344
+          minLength: 344
+          type: string
+          description: Base64 encrypted pincode, using its dedicated public key
+          example: Bs39XVxP0s[..]A==
+        id:
+          pattern: ^(\d{9})$
+          type: string
+          description: party id such as msisdn value
+          example: '771234567'
+        idType:
+          type: string
+          description: party id type
+          example: MSISDN
+          enum:
+            - CODE
+            - MSISDN
+        wallet:
+          type: string
+          description: Wallet Type
+          example: PRINCIPAL
+          enum:
+            - bonus
+            - international
+            - principal
+            - salaire
+    UserProfile:
+      title: UserProfile
+      type: object
+      properties:
+        balance:
+          $ref: '#/components/schemas/Money'
+        barred:
+          type: string
+          description: |-
+            Current state of the user with respect to barring. Allowed values are. 
+             - Sender: Barred as sender 
+             - Receiver: Barred as receiver 
+             - Both: Barred as both sender and receiver 
+             - No: Not barred
+          example: Sender
+        firstName:
+          type: string
+          description: First Name of the user
+          example: Samba
+        frozenBalance:
+          $ref: '#/components/schemas/Money'
+        grade:
+          type: string
+          description: Account grade of the user (N/A for retailer/merchant)
+          example: Full
+          enum:
+            - Full
+            - Light
+        lastName:
+          type: string
+          description: Last Name of the user
+          example: Ndiaye
+        msisdn:
+          type: string
+          description: Msisdn of the user
+          example: '771234567'
+        suspended:
+          type: string
+          description: |-
+            Current State of the user with respect to suspension. Allowed values are 
+             - Yes : User is suspended 
+             - No : User is active
+          example: 'Yes'
+        type:
+          type: string
+          description: |-
+            User type. Allowed values are. 
+             - customer : a subscriber client 
+             - retailer: retailer/merchant client
+          example: customer
+          enum:
+            - customer
+            - retailer
+        userId:
+          type: string
+          description: User ID of the user
+    Violation:
+      title: Violation
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string

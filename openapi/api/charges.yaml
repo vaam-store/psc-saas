@@ -1,0 +1,567 @@
+openapi: "3.0.1"
+info:
+  title: "PSC Charges & Refunds API"
+  version: "1.0.0"
+  description: "Direct charges and direct refunds for Cameroon MNOs (MTN, Orange, Camtel). All amounts are integer minor units (XAF). OAuth2/OIDC via Keycloak; requests are org-scoped using 'X-Org-Id' and idempotent via 'Idempotency-Key'."
+servers:
+  - url: "https://api.sandbox.psc"
+    description: "Sandbox"
+  - url: "https://api.psc"
+    description: "Production"
+security:
+  - oauth2: ["charges:read", "charges:write"]
+  - ApiKeyAuth: []
+tags:
+  - name: "Charges"
+    description: "Create and manage direct charges (debits)"
+  - name: "Refunds"
+    description: "Create and manage direct refunds"
+  - name: "Payment Methods"
+    description: "MSISDN verification and lookup"
+  - name: "Providers"
+    description: "Provider capabilities and limits"
+
+paths:
+  /v1/charges:
+    post:
+      tags: ["Charges"]
+      summary: "Create a direct charge"
+      description: "Initiate a direct debit on a customer's MSISDN. If 'confirm=true', the provider flow starts immediately; otherwise charge is created in 'requires_action' for a later confirm. If 'escrow_id' is set, funds are held in that escrow instead of the merchant balance."
+      operationId: "CreateCharge"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChargeRequest"
+            examples:
+              mtn_confirm:
+                summary: "MTN, immediate confirm"
+                value:
+                  amount: 150000
+                  currency: "XAF"
+                  provider: "mtn"
+                  msisdn: "+237670000001"
+                  description: "Order #1001"
+                  confirm: true
+                  metadata:
+                    order_id: "1001"
+      responses:
+        "201":
+          description: "Charge created (sync success)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Charge"
+        "202":
+          description: "Charge accepted; provider callback pending"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Charge"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    get:
+      tags: ["Charges"]
+      summary: "List charges"
+      operationId: "ListCharges"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - name: "status"
+          in: "query"
+          schema: { $ref: "#/components/schemas/ChargeStatus" }
+          description: "Filter by charge status"
+        - name: "msisdn"
+          in: "query"
+          schema: { $ref: "#/components/schemas/Msisdn" }
+          description: "Filter by customer MSISDN"
+        - name: "provider"
+          in: "query"
+          schema: { $ref: "#/components/schemas/Provider" }
+        - name: "escrow_id"
+          in: "query"
+          schema: { type: "string" }
+        - $ref: "#/components/parameters/CreatedAtFrom"
+        - $ref: "#/components/parameters/CreatedAtTo"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Charge list"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListChargesResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/charges/{charge_id}:
+    get:
+      tags: ["Charges"]
+      summary: "Retrieve a charge"
+      operationId: "GetCharge"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/ChargeId"
+      responses:
+        "200":
+          description: "Charge"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Charge" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/charges/{charge_id}/cancel:
+    post:
+      tags: ["Charges"]
+      summary: "Cancel a pending charge"
+      description: "Cancel a charge that is not yet completed, if the provider supports it."
+      operationId: "CancelCharge"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+        - $ref: "#/components/parameters/ChargeId"
+      responses:
+        "200":
+          description: "Charge cancelled"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Charge" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/refunds:
+    post:
+      tags: ["Refunds"]
+      summary: "Create a refund"
+      description: "Create a direct refund for a charge or an unreleased escrow balance."
+      operationId: "CreateRefund"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateRefundRequest" }
+            examples:
+              for_charge:
+                summary: "Refund part of a charge"
+                value:
+                  charge_id: "ch_123"
+                  amount: 40000
+                  reason: "requested_by_customer"
+      responses:
+        "201":
+          description: "Refund created"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Refund" }
+        "202":
+          description: "Refund accepted; provider callback pending"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Refund" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    get:
+      tags: ["Refunds"]
+      summary: "List refunds"
+      operationId: "ListRefunds"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - name: "status"
+          in: "query"
+          schema: { $ref: "#/components/schemas/RefundStatus" }
+        - name: "charge_id"
+          in: "query"
+          schema: { type: "string" }
+        - name: "escrow_id"
+          in: "query"
+          schema: { type: "string" }
+        - $ref: "#/components/parameters/CreatedAtFrom"
+        - $ref: "#/components/parameters/CreatedAtTo"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Refund list"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListRefundsResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/refunds/{refund_id}:
+    get:
+      tags: ["Refunds"]
+      summary: "Retrieve a refund"
+      operationId: "GetRefund"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/RefundId"
+      responses:
+        "200":
+          description: "Refund"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Refund" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/payment-methods/verify:
+    post:
+      tags: ["Payment Methods"]
+      summary: "Verify a payment MSISDN"
+      description: "Trigger a consent/OTP or STK push verification for a customer's MSISDN without creating a charge."
+      operationId: "VerifyPaymentMethod"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VerifyMsisdnRequest" }
+      responses:
+        "201":
+          description: "Verification created"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Verification" }
+        "202":
+          description: "Verification pending callback"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Verification" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/payment-methods/{msisdn}:
+    get:
+      tags: ["Payment Methods"]
+      summary: "Get verification status"
+      description: "Retrieve cached verification/consent status for an MSISDN if available."
+      operationId: "GetPaymentMethod"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - name: "msisdn"
+          in: "path"
+          required: true
+          schema: { $ref: "#/components/schemas/Msisdn" }
+      responses:
+        "200":
+          description: "Payment method (verification cache)"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentMethod" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/providers:
+    get:
+      tags: ["Providers"]
+      summary: "List supported providers"
+      description: "Enumerate providers and their capabilities/limits for debit and refund directions."
+      operationId: "ListProviders"
+      responses:
+        "200":
+          description: "Providers"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProvidersResponse" }
+
+components:
+  securitySchemes:
+    oauth2:
+      type: "oauth2"
+      description: "OAuth2/OIDC via Keycloak; use organization-scoped tokens."
+      flows:
+        authorizationCode:
+          authorizationUrl: "https://auth.psc/realms/psc/protocol/openid-connect/auth"
+          tokenUrl: "https://auth.psc/realms/psc/protocol/openid-connect/token"
+          scopes:
+            charges:read: "Read charges and refunds"
+            charges:write: "Write charges and refunds"
+            org:admin: "Administrative privileges"
+        clientCredentials:
+          tokenUrl: "https://auth.psc/realms/psc/protocol/openid-connect/token"
+          scopes:
+            charges:read: "Read charges and refunds"
+            charges:write: "Write charges and refunds"
+            org:admin: "Administrative privileges"
+    ApiKeyAuth:
+      type: "apiKey"
+      in: "header"
+      name: "X-Api-Key"
+
+  parameters:
+    X-Org-Id:
+      name: "X-Org-Id"
+      in: "header"
+      required: true
+      description: "Organization identifier that scopes the request"
+      schema:
+        type: "string"
+    Idempotency-Key:
+      name: "Idempotency-Key"
+      in: "header"
+      required: false
+      description: "Provide to make write operations idempotent"
+      schema:
+        type: "string"
+        maxLength: 256
+    ChargeId:
+      name: "charge_id"
+      in: "path"
+      required: true
+      schema: { type: "string" }
+    RefundId:
+      name: "refund_id"
+      in: "path"
+      required: true
+      schema: { type: "string" }
+    CreatedAtFrom:
+      name: "created_at_from"
+      in: "query"
+      required: false
+      schema: { type: "string", format: "date-time" }
+      description: "ISO8601 inclusive lower bound"
+    CreatedAtTo:
+      name: "created_at_to"
+      in: "query"
+      required: false
+      schema: { type: "string", format: "date-time" }
+      description: "ISO8601 exclusive upper bound"
+    Cursor:
+      name: "cursor"
+      in: "query"
+      required: false
+      schema: { type: "string" }
+      description: "Opaque pagination cursor"
+    Limit:
+      name: "limit"
+      in: "query"
+      required: false
+      schema: { type: "integer", minimum: 1, maximum: 200, default: 50 }
+      description: "Max items to return"
+
+  responses:
+    BadRequest:
+      description: "Invalid request"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    Unauthorized:
+      description: "Authentication required or invalid"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    Forbidden:
+      description: "Insufficient privileges"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    NotFound:
+      description: "Resource not found"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    Conflict:
+      description: "State conflict"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    UnprocessableEntity:
+      description: "Validation failed"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    RateLimited:
+      description: "Too many requests"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    InternalError:
+      description: "Unexpected server error"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+
+  schemas:
+    Msisdn:
+      type: "string"
+      description: "E.164 formatted phone number"
+    Currency:
+      type: "string"
+      enum: ["XAF"]
+      description: "ISO 4217 currency code; restricted to 'XAF' at launch"
+    Provider:
+      type: "string"
+      enum: ["mtn", "orange", "camtel"]
+      description: "Mobile network operator"
+    ChargeStatus:
+      type: "string"
+      enum: ["requires_action", "pending", "processing", "succeeded", "failed", "canceled"]
+    RefundStatus:
+      type: "string"
+      enum: ["pending", "succeeded", "failed"]
+    Metadata:
+      type: "object"
+      additionalProperties: { type: "string", maxLength: 500 }
+    Charge:
+      type: "object"
+      required: ["id", "status", "amount", "currency", "provider", "msisdn", "created_at", "updated_at"]
+      properties:
+        id: { type: "string" }
+        status: { $ref: "#/components/schemas/ChargeStatus" }
+        amount: { type: "integer", minimum: 1 }
+        currency: { $ref: "#/components/schemas/Currency" }
+        provider: { $ref: "#/components/schemas/Provider" }
+        msisdn: { $ref: "#/components/schemas/Msisdn" }
+        escrow_id: { type: "string", description: "If set, charge funded an escrow" }
+        description: { type: "string", maxLength: 5000 }
+        failure_code: { type: "string" }
+        failure_message: { type: "string" }
+        metadata: { $ref: "#/components/schemas/Metadata" }
+        created_at: { type: "string", format: "date-time" }
+        updated_at: { type: "string", format: "date-time" }
+    CreateChargeRequest:
+      type: "object"
+      required: ["amount", "currency", "provider", "msisdn", "confirm"]
+      properties:
+        amount: { type: "integer", minimum: 1 }
+        currency: { $ref: "#/components/schemas/Currency" }
+        provider: { $ref: "#/components/schemas/Provider" }
+        msisdn: { $ref: "#/components/schemas/Msisdn" }
+        description: { type: "string", maxLength: 5000 }
+        metadata: { $ref: "#/components/schemas/Metadata" }
+        confirm: { type: "boolean" }
+        escrow_id: { type: "string" }
+        return_url: { type: "string", format: "uri" }
+    Refund:
+      type: "object"
+      required: ["id", "status", "amount", "currency", "created_at"]
+      properties:
+        id: { type: "string" }
+        charge_id: { type: "string" }
+        escrow_id: { type: "string" }
+        status: { $ref: "#/components/schemas/RefundStatus" }
+        amount: { type: "integer" }
+        currency: { $ref: "#/components/schemas/Currency" }
+        failure_code: { type: "string" }
+        failure_message: { type: "string" }
+        metadata: { $ref: "#/components/schemas/Metadata" }
+        created_at: { type: "string", format: "date-time" }
+        updated_at: { type: "string", format: "date-time" }
+    CreateRefundRequest:
+      type: "object"
+      properties:
+        charge_id: { type: "string" }
+        escrow_id: { type: "string" }
+        amount: { type: "integer", minimum: 1 }
+        reason:
+          type: "string"
+          enum: ["requested_by_customer", "duplicate", "fraudulent", "other"]
+        metadata: { $ref: "#/components/schemas/Metadata" }
+      anyOf:
+        - required: ["charge_id"]
+        - required: ["escrow_id"]
+    ListChargesResponse:
+      type: "object"
+      properties:
+        data:
+          type: "array"
+          items: { $ref: "#/components/schemas/Charge" }
+        next_cursor: { type: "string" }
+    ListRefundsResponse:
+      type: "object"
+      properties:
+        data:
+          type: "array"
+          items: { $ref: "#/components/schemas/Refund" }
+        next_cursor: { type: "string" }
+
+    Verification:
+      type: "object"
+      required: ["id", "status", "provider", "msisdn", "created_at"]
+      properties:
+        id: { type: "string" }
+        status: { type: "string", enum: ["pending", "succeeded", "failed", "expired"] }
+        provider: { $ref: "#/components/schemas/Provider" }
+        msisdn: { $ref: "#/components/schemas/Msisdn" }
+        failure_code: { type: "string" }
+        failure_message: { type: "string" }
+        created_at: { type: "string", format: "date-time" }
+        updated_at: { type: "string", format: "date-time" }
+    VerifyMsisdnRequest:
+      type: "object"
+      required: ["provider", "msisdn"]
+      properties:
+        provider: { $ref: "#/components/schemas/Provider" }
+        msisdn: { $ref: "#/components/schemas/Msisdn" }
+        metadata: { $ref: "#/components/schemas/Metadata" }
+    PaymentMethod:
+      type: "object"
+      properties:
+        msisdn: { $ref: "#/components/schemas/Msisdn" }
+        last_verified_at: { type: "string", format: "date-time" }
+        provider: { $ref: "#/components/schemas/Provider" }
+        verification_status: { type: "string", enum: ["unknown", "verified", "expired", "failed"] }
+
+    ProviderCapabilities:
+      type: "object"
+      properties:
+        name: { type: "string", enum: ["mtn", "orange", "camtel"] }
+        debit_limits:
+          type: "object"
+          properties:
+            min: { type: "integer" }
+            max: { type: "integer" }
+        refund_limits:
+          type: "object"
+          properties:
+            min: { type: "integer" }
+            max: { type: "integer" }
+        supports_cancel: { type: "boolean" }
+        currencies: { type: "array", items: { type: "string", enum: ["XAF"] } }
+    ProvidersResponse:
+      type: "object"
+      properties:
+        data:
+          type: "array"
+          items: { $ref: "#/components/schemas/ProviderCapabilities" }
+
+    ErrorResponse:
+      type: "object"
+      required: ["error"]
+      properties:
+        error:
+          type: "object"
+          required: ["type", "message"]
+          properties:
+            type:
+              type: "string"
+              enum: [
+                "invalid_request",
+                "authentication_error",
+                "authorization_error",
+                "idempotency_error",
+                "provider_declined",
+                "insufficient_funds",
+                "rate_limited",
+                "internal"
+              ]
+            message: { type: "string" }
+            code: { type: "string" }
+            param: { type: "string" }

@@ -1,0 +1,591 @@
+openapi: "3.0.1"
+info:
+  title: "PSC Provider Callbacks & Merchant Webhooks API"
+  version: "1.0.0"
+  description: "Inbound provider callbacks (MTN, Orange, Camtel) and merchant webhook/end-to-end events. Provider callbacks verify HMAC signatures; merchant webhooks are configurable per organization. This spec is transport-agnostic for outbound deliveries but documents retry/replay controls."
+servers:
+  - url: "https://api.sandbox.psc"
+    description: "Sandbox"
+  - url: "https://api.psc"
+    description: "Production"
+security:
+  - oauth2: [ "webhooks:read", "webhooks:write" ]
+  - ApiKeyAuth: [ ]
+tags:
+  - name: "Provider Callbacks"
+    description: "Inbound webhooks from MNOs (charge, payout, verification)."
+  - name: "Webhook Endpoints"
+    description: "Manage merchant webhook endpoints and secrets."
+  - name: "Events"
+    description: "List and replay normalized PSC events."
+  - name: "Testing"
+    description: "Sandbox-only callback simulator."
+
+paths:
+  /v1/webhooks/mtn:
+    post:
+      tags: [ "Provider Callbacks" ]
+      summary: "MTN provider callback"
+      description: "Receives asynchronous status notifications from MTN for charges, payouts, and verifications. Secured by HMAC header 'X-PSC-Signature' and timestamp 'X-PSC-Timestamp'."
+      operationId: "MtnCallback"
+      security:
+        - ProviderHmac: [ ]
+      parameters:
+        - $ref: "#/components/parameters/X-PSC-Timestamp"
+        - $ref: "#/components/parameters/X-PSC-Signature"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderCallback" }
+      responses:
+        "200":
+          description: "Acknowledged"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CallbackAck" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /v1/webhooks/orange:
+    post:
+      tags: [ "Provider Callbacks" ]
+      summary: "Orange provider callback"
+      operationId: "OrangeCallback"
+      security:
+        - ProviderHmac: [ ]
+      parameters:
+        - $ref: "#/components/parameters/X-PSC-Timestamp"
+        - $ref: "#/components/parameters/X-PSC-Signature"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderCallback" }
+      responses:
+        "200": { description: "Acknowledged" , content: { application/json: { schema: { $ref: "#/components/schemas/CallbackAck" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /v1/webhooks/camtel:
+    post:
+      tags: [ "Provider Callbacks" ]
+      summary: "Camtel provider callback"
+      operationId: "CamtelCallback"
+      security:
+        - ProviderHmac: [ ]
+      parameters:
+        - $ref: "#/components/parameters/X-PSC-Timestamp"
+        - $ref: "#/components/parameters/X-PSC-Signature"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderCallback" }
+      responses:
+        "200": { description: "Acknowledged" , content: { application/json: { schema: { $ref: "#/components/schemas/CallbackAck" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /v1/webhooks/generic:
+    post:
+      tags: [ "Provider Callbacks" ]
+      summary: "Generic provider callback"
+      description: "Optional single endpoint when using a gateway that normalizes provider events. Requires 'provider' field in payload."
+      operationId: "GenericCallback"
+      security:
+        - ProviderHmac: [ ]
+      parameters:
+        - $ref: "#/components/parameters/X-PSC-Timestamp"
+        - $ref: "#/components/parameters/X-PSC-Signature"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderCallback" }
+      responses:
+        "200": { description: "Acknowledged" , content: { application/json: { schema: { $ref: "#/components/schemas/CallbackAck" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /v1/webhooks/simulator:
+    post:
+      tags: [ "Testing" ]
+      summary: "Sandbox: simulate provider callback"
+      description: "Inject a synthetic provider callback for testing and integration. Available only on sandbox."
+      operationId: "SimulateCallback"
+      security:
+        - oauth2: [ "webhooks:write" ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SimulateCallbackRequest" }
+      responses:
+        "200": { description: "Simulated event accepted" , content: { application/json: { schema: { $ref: "#/components/schemas/CallbackAck" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /v1/webhook-endpoints:
+    post:
+      tags: [ "Webhook Endpoints" ]
+      summary: "Register a webhook endpoint"
+      description: "Create a merchant webhook endpoint to receive PSC events. A signing secret is generated; outbound requests include 'PSC-Signature' and 'PSC-Timestamp' headers."
+      operationId: "CreateWebhookEndpoint"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/Idempotency-Key"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateWebhookEndpointRequest" }
+      responses:
+        "201":
+          description: "Webhook endpoint created"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebhookEndpoint" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    get:
+      tags: [ "Webhook Endpoints" ]
+      summary: "List webhook endpoints"
+      operationId: "ListWebhookEndpoints"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+      responses:
+        "200":
+          description: "Webhook endpoints"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListWebhookEndpointsResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/webhook-endpoints/{endpoint_id}:
+    delete:
+      tags: [ "Webhook Endpoints" ]
+      summary: "Delete a webhook endpoint"
+      operationId: "DeleteWebhookEndpoint"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/EndpointId"
+      responses:
+        "204": { description: "Deleted" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [ "Webhook Endpoints" ]
+      summary: "Update a webhook endpoint"
+      operationId: "UpdateWebhookEndpoint"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/EndpointId"
+        - $ref: "#/components/parameters/Idempotency-Key"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateWebhookEndpointRequest" }
+      responses:
+        "200":
+          description: "Webhook endpoint updated"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebhookEndpoint" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/webhook-endpoints/{endpoint_id}/rotate-secret:
+    post:
+      tags: [ "Webhook Endpoints" ]
+      summary: "Rotate signing secret"
+      description: "Rotate the webhook signing secret. Returns both the new active secret and a grace 'previous_secret_last4' to support secret rotation windows."
+      operationId: "RotateWebhookSecret"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/EndpointId"
+        - $ref: "#/components/parameters/Idempotency-Key"
+      responses:
+        "200":
+          description: "Secret rotated"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebhookSecretRotation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/events:
+    get:
+      tags: [ "Events" ]
+      summary: "List events"
+      description: "List normalized events emitted by PSC (charges, refunds, escrows, payouts, disputes). Cursor paginated."
+      operationId: "ListEvents"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - name: "type"
+          in: "query"
+          description: "Filter by event type"
+          schema: { $ref: "#/components/schemas/EventType" }
+        - $ref: "#/components/parameters/CreatedAtFrom"
+        - $ref: "#/components/parameters/CreatedAtTo"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Event list"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEventsResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /v1/events/{event_id}:
+    get:
+      tags: [ "Events" ]
+      summary: "Retrieve an event"
+      operationId: "GetEvent"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: "Event"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Event" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/events/{event_id}/replay:
+    post:
+      tags: [ "Events" ]
+      summary: "Replay an event"
+      description: "Re-deliver an event to configured webhook endpoints. Can target a specific endpoint by id; otherwise broadcasts to all active endpoints."
+      operationId: "ReplayEvent"
+      parameters:
+        - $ref: "#/components/parameters/X-Org-Id"
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/Idempotency-Key"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReplayEventRequest" }
+      responses:
+        "202":
+          description: "Replay scheduled"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReplayEventResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  securitySchemes:
+    oauth2:
+      type: "oauth2"
+      description: "OAuth2/OIDC via Keycloak; use organization-scoped tokens."
+      flows:
+        authorizationCode:
+          authorizationUrl: "https://auth.psc/realms/psc/protocol/openid-connect/auth"
+          tokenUrl: "https://auth.psc/realms/psc/protocol/openid-connect/token"
+          scopes:
+            webhooks:read: "Read webhook endpoints and events"
+            webhooks:write: "Write webhook endpoints and replay events"
+        clientCredentials:
+          tokenUrl: "https://auth.psc/realms/psc/protocol/openid-connect/token"
+          scopes:
+            webhooks:read: "Read webhook endpoints and events"
+            webhooks:write: "Write webhook endpoints and replay events"
+    ApiKeyAuth:
+      type: "apiKey"
+      in: "header"
+      name: "X-Api-Key"
+    
+#    ProviderHmac:
+#      type: "apiKey"
+#      in: "header"
+#      name: "X-PSC-Signature"
+#      description: "HMAC signature of the request body using shared secret with provider (hex). Timestamp in 'X-PSC-Timestamp'."
+  
+  parameters:
+    X-Org-Id:
+      name: "X-Org-Id"
+      in: "header"
+      required: true
+      description: "Organization identifier that scopes the request"
+      schema: { type: "string" }
+    Idempotency-Key:
+      name: "Idempotency-Key"
+      in: "header"
+      required: false
+      description: "Provide to make write operations idempotent"
+      schema: { type: "string", maxLength: 256 }
+    X-PSC-Timestamp:
+      name: "X-PSC-Timestamp"
+      in: "header"
+      required: true
+      description: "Unix epoch seconds used in HMAC signature"
+      schema: { type: "string" }
+    X-PSC-Signature:
+      name: "X-PSC-Signature"
+      in: "header"
+      required: true
+      description: "HMAC-SHA256 signature over 'timestamp + '.' + body'"
+      schema: { type: "string" }
+    EndpointId:
+      name: "endpoint_id"
+      in: "path"
+      required: true
+      schema: { type: "string" }
+    EventId:
+      name: "event_id"
+      in: "path"
+      required: true
+      schema: { type: "string" }
+    CreatedAtFrom:
+      name: "created_at_from"
+      in: "query"
+      required: false
+      schema: { type: "string", format: "date-time" }
+      description: "ISO8601 inclusive lower bound"
+    CreatedAtTo:
+      name: "created_at_to"
+      in: "query"
+      required: false
+      schema: { type: "string", format: "date-time" }
+      description: "ISO8601 exclusive upper bound"
+    Cursor:
+      name: "cursor"
+      in: "query"
+      required: false
+      schema: { type: "string" }
+      description: "Opaque pagination cursor"
+    Limit:
+      name: "limit"
+      in: "query"
+      required: false
+      schema: { type: "integer", minimum: 1, maximum: 200, default: 50 }
+      description: "Max items to return"
+  
+  responses:
+    BadRequest:
+      description: "Invalid request"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    Unauthorized:
+      description: "Authentication required or invalid"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    Forbidden:
+      description: "Insufficient privileges"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    NotFound:
+      description: "Resource not found"
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+
+  schemas:
+    ProviderCallback:
+      type: "object"
+      description: "Normalized provider callback wrapper. 'raw' contains the original payload for auditing."
+      required: [ "provider", "kind", "direction", "status", "amount", "currency", "msisdn", "occurred_at", "raw" ]
+      properties:
+        provider: { type: "string", enum: [ "mtn", "orange", "camtel" ] }
+        kind: { type: "string", enum: [ "charge", "payout", "verification" ] }
+        direction: { type: "string", enum: [ "inbound", "outbound" ] }
+        reference: { type: "string", description: "Provider reference id" }
+        status: { type: "string", enum: [ "SUCCESS", "FAILED", "PENDING" ] }
+        reason: { type: "string" }
+        amount: { type: "integer" }
+        currency: { type: "string", enum: [ "XAF" ] }
+        msisdn: { type: "string" }
+        related_ids:
+          type: "object"
+          properties:
+            charge_id: { type: "string" }
+            payout_id: { type: "string" }
+            refund_id: { type: "string" }
+            escrow_id: { type: "string" }
+        raw:
+          type: "object"
+          additionalProperties: true
+        occurred_at: { type: "string", format: "date-time" }
+    CallbackAck:
+      type: "object"
+      required: [ "received" ]
+      properties:
+        received: { type: "boolean" }
+        event_id: { type: "string" }
+
+    CreateWebhookEndpointRequest:
+      type: "object"
+      required: [ "url" ]
+      properties:
+        url: { type: "string", format: "uri" }
+        enabled_events:
+          type: "array"
+          items: { $ref: "#/components/schemas/EventType" }
+        description: { type: "string", maxLength: 2000 }
+        secret: { type: "string", description: "Optional pre-shared secret (if omitted, generated)" }
+        version: { type: "string", enum: [ "v1" ] }
+        retry_strategy:
+          type: "object"
+          properties:
+            max_attempts: { type: "integer", minimum: 1, default: 12 }
+            backoff: { type: "string", enum: [ "exponential", "linear" ], default: "exponential" }
+            ttl_seconds: { type: "integer", minimum: 60, default: 86400 }
+    UpdateWebhookEndpointRequest:
+      type: "object"
+      properties:
+        url: { type: "string", format: "uri" }
+        enabled_events:
+          type: "array"
+          items: { $ref: "#/components/schemas/EventType" }
+        description: { type: "string", maxLength: 2000 }
+        status: { type: "string", enum: [ "active", "paused" ] }
+        retry_strategy:
+          type: "object"
+          properties:
+            max_attempts: { type: "integer", minimum: 1 }
+            backoff: { type: "string", enum: [ "exponential", "linear" ] }
+            ttl_seconds: { type: "integer", minimum: 60 }
+    WebhookEndpoint:
+      type: "object"
+      required: [ "id", "url", "status", "enabled_events", "created_at" ]
+      properties:
+        id: { type: "string" }
+        url: { type: "string", format: "uri" }
+        status: { type: "string", enum: [ "active", "paused" ] }
+        enabled_events:
+          type: "array"
+          items: { $ref: "#/components/schemas/EventType" }
+        secret_last4: { type: "string" }
+        version: { type: "string", enum: [ "v1" ] }
+        retry_strategy:
+          type: "object"
+          properties:
+            max_attempts: { type: "integer" }
+            backoff: { type: "string", enum: [ "exponential", "linear" ] }
+            ttl_seconds: { type: "integer" }
+        created_at: { type: "string", format: "date-time" }
+        updated_at: { type: "string", format: "date-time" }
+
+    Event:
+      type: "object"
+      required: [ "id", "type", "created_at", "data" ]
+      properties:
+        id: { type: "string" }
+        type: { $ref: "#/components/schemas/EventType" }
+        created_at: { type: "string", format: "date-time" }
+        delivery_status: { type: "string", enum: [ "pending", "partially_delivered", "delivered", "failed" ] }
+        data:
+          type: "object"
+          properties:
+            object: { type: "string", enum: [ "charge", "refund", "escrow", "payout", "dispute" ] }
+            charge: { type: "object", additionalProperties: true }
+            refund: { type: "object", additionalProperties: true }
+            escrow: { type: "object", additionalProperties: true }
+            payout: { type: "object", additionalProperties: true }
+            dispute: { type: "object", additionalProperties: true }
+    EventType:
+      type: "string"
+      enum:
+        - "charge.created"
+        - "charge.pending"
+        - "charge.succeeded"
+        - "charge.failed"
+        - "refund.created"
+        - "refund.pending"
+        - "refund.succeeded"
+        - "refund.failed"
+        - "escrow.created"
+        - "escrow.funded"
+        - "escrow.partially_released"
+        - "escrow.released"
+        - "escrow.cancelled"
+        - "escrow.expired"
+        - "escrow.frozen"
+        - "escrow.unfrozen"
+        - "payout.created"
+        - "payout.pending"
+        - "payout.succeeded"
+        - "payout.failed"
+        - "dispute.opened"
+        - "dispute.resolved"
+        - "dispute.closed"
+    ListEventsResponse:
+      type: "object"
+      properties:
+        data:
+          type: "array"
+          items: { $ref: "#/components/schemas/Event" }
+        next_cursor: { type: "string" }
+    ReplayEventRequest:
+      type: "object"
+      properties:
+        endpoint_id: { type: "string" }
+    ReplayEventResponse:
+      type: "object"
+      properties:
+        event_id: { type: "string" }
+        scheduled_for_endpoints:
+          type: "array"
+          items: { type: "string" }
+
+    SimulateCallbackRequest:
+      type: "object"
+      required: [ "provider", "kind", "direction", "status", "amount", "currency", "msisdn" ]
+      properties:
+        provider: { type: "string", enum: [ "mtn", "orange", "camtel" ] }
+        kind: { type: "string", enum: [ "charge", "payout", "verification" ] }
+        direction: { type: "string", enum: [ "inbound", "outbound" ] }
+        status: { type: "string", enum: [ "SUCCESS", "FAILED", "PENDING" ] }
+        amount: { type: "integer" }
+        currency: { type: "string", enum: [ "XAF" ] }
+        msisdn: { type: "string" }
+        related_ids:
+          type: "object"
+          properties:
+            charge_id: { type: "string" }
+            payout_id: { type: "string" }
+            refund_id: { type: "string" }
+            escrow_id: { type: "string" }
+        raw: { type: "object", additionalProperties: true }
+
+    ErrorResponse:
+      type: "object"
+      required: [ "error" ]
+      properties:
+        error:
+          type: "object"
+          required: [ "type", "message" ]
+          properties:
+            type:
+              type: "string"
+              enum: [
+                "invalid_request",
+                "authentication_error",
+                "authorization_error",
+                "signature_verification_error",
+                "rate_limited",
+                "internal"
+              ]
+            message: { type: "string" }
+            code: { type: "string" }
+            param: { type: "string" }
+    
+    ListWebhookEndpointsResponse:
+      type: "object"
+      properties:
+        data:
+          type: "array"
+          items: { $ref: "#/components/schemas/WebhookEndpoint" }
+        next_cursor: { type: "string" }
+    
+    WebhookSecretRotation:
+      type: "object"
+      required: [ "endpoint_id", "secret", "previous_secret_last4" ]
+      properties:
+        endpoint_id: { type: "string" }
+        secret: { type: "string" }
+        previous_secret_last4: { type: "string" }
