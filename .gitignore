@@ -67,3 +67,5 @@ target
 
 crates/apis
 crates/clients
+# Generated protobuf artifacts
+gen/

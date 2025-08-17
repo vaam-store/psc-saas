@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  # One-shot service to generate protobuf artefacts from the repo's proto/ directory.
+  # This keeps all steps in compose as requested — no Dockerfile is required.
+  #
+  # How to use:
+  #   docker compose -f compose.proto.yaml run --rm protoc
+  #
+  # The service mounts the repository into /workspace, installs protoc and common
+  # helpers at runtime, and then runs the repository script scripts/generate_proto.sh
+  # which already exists in this repo. Generated files will be written into the
+  # mounted workspace so they are available on the host filesystem.
+  protoc:
+    image: alpine:3.18
+    container_name: protoc-gen
+    tty: false
+    stdin_open: false
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace:rw
+    # Use a short init command that installs necessary packages (curl, unzip, protoc package)
+    # then calls the repo-provided script to perform generation. We keep the commands in
+    # a single-line shell form so `docker compose run --rm protoc` just executes and exits.
+    command: >
+      sh -exc "
+        apk update && \
+        apk add --no-cache bash curl unzip make gcc musl-dev protobuf protobuf-dev && \
+        # ensure scripts are executable
+        chmod +x ./scripts/generate_proto.sh && \
+        ./scripts/generate_proto.sh
+      "
+    # Do not restart — this is a one-shot generator
+    restart: "no"
+    # Keep service ephemeral
+    labels:
+      - 'com.example.role=proto-generator'
