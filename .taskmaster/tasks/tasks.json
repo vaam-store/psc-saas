@@ -1,0 +1,350 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Initialize Project and Shared Libraries",
+        "description": "Set up the monorepo/project structure and develop core shared packages including Protobufs for API definitions, common domain types, configuration management, error handling, observability (OpenTelemetry), authentication, idempotency, provider traits, fee calculation logic, retry mechanisms, and a test harness.",
+        "details": "Initialize a new project repository. Define Protobuf schemas for all internal gRPC APIs and public REST API data models (e.g., Payment, Payout, JournalEntry, Balance). Implement shared domain types for money (XAF minor units), principals, provider wallets, ledger accounts. Set up a centralized configuration system. Establish a consistent error handling framework. Integrate OpenTelemetry for tracing all requests and journal postings. Implement an idempotency mechanism using Redis for `idempotency-key` on mutating requests. Define `Provider` trait with `deposit`, `withdraw`, `refund`, `query`, `verify_webhook` methods. Develop a robust retry logic for external API calls. Set up a comprehensive test harness for unit, integration, and end-to-end testing. Utilize Kubernetes + Knative for microservice deployment and autoscaling, Vault/KMS for secrets management.",
+        "testStrategy": "Unit tests for each shared utility (e.g., idempotency, retry logic, money calculations). Schema validation tests for Protobuf definitions. Integration tests to ensure shared components work together correctly.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize Monorepo Structure and Git Guidelines",
+            "description": "Set up the foundational monorepo directory structure, initialize the Git repository, and establish initial branch and PR guidelines.",
+            "dependencies": [],
+            "details": "Create the root project directory. Initialize `git init`. Add a comprehensive `.gitignore` file. Define `README.md` with project overview and `CONTRIBUTING.md` outlining branch naming conventions (e.g., `feature/`, `bugfix/`), commit message standards (e.g., Conventional Commits), and Pull Request (PR) review guidelines. Establish core directories like `services/`, `shared/`, `proto/`, `deploy/`, and `scripts/`.",
+            "status": "done",
+            "testStrategy": "Manual verification of the created directory structure and content of `README.md`, `CONTRIBUTING.md`, and `.gitignore`."
+          },
+          {
+            "id": 2,
+            "title": "Define Core Protobuf Schemas (Common Types & API Models)",
+            "description": "Create initial Protobuf definitions for common data types and core API models like Payment, Payout, JournalEntry, and Balance. These will serve as the contract for gRPC and REST APIs.",
+            "dependencies": [],
+            "details": "Create `proto/common/v1/common.proto` for shared primitive types (e.g., `Money` message with `amount_minor_units` and `currency_code`, `Timestamp`). Define service-specific schemas: `proto/payment/v1/payment.proto` (e.g., `CreatePaymentRequest`, `Payment`), `proto/payout/v1/payout.proto` (e.g., `CreatePayoutRequest`, `Payout`), `proto/journal/v1/journal.proto` (e.g., `PostJournalRequest`, `JournalEntry`), and `proto/balance/v1/balance.proto` (e.g., `GetBalanceRequest`, `Balance`). Ensure consistent naming and field types.",
+            "status": "pending",
+            "testStrategy": "Manual review of `.proto` files for correctness, consistency, and adherence to Protobuf style guides. Use `protoc --dry_run` to check for syntax errors."
+          },
+          {
+            "id": 3,
+            "title": "Set Up Protobuf Tooling and Code Generation",
+            "description": "Configure `protoc` and relevant plugins to generate code from Protobuf schemas for various target languages (e.g., Go, TypeScript) and API documentation.",
+            "dependencies": [],
+            "details": "Install `protoc` and necessary plugins: `protoc-gen-go`, `protoc-gen-go-grpc` for Go, `protoc-gen-grpc-gateway` for REST API mapping, and `protoc-gen-openapiv2` for Swagger/OpenAPI documentation. Create a `Makefile` or a shell script (e.g., `scripts/generate_proto.sh`) in the root directory to automate the compilation and code generation process. Configure output directories (e.g., `gen/go/`, `gen/ts/`, `gen/swagger/`). Ensure the generated code is either committed or generated as part of the CI process.",
+            "status": "pending",
+            "testStrategy": "Execute the `generate_proto.sh` script and verify that `.pb.go`, `.pb.gw.go`, `.swagger.json` files are correctly generated in their respective output directories without errors."
+          },
+          {
+            "id": 4,
+            "title": "Implement Shared Domain Types",
+            "description": "Develop core shared domain types in the chosen backend language (e.g., Go) for concepts like money (XAF minor units), principals (users/merchants), provider wallets, and ledger accounts.",
+            "dependencies": [],
+            "details": "Create a `shared/domain/` package. Implement a `Money` struct/type that wraps the Protobuf `Money` message, providing methods for safe arithmetic operations (addition, subtraction, comparison) and ensuring all calculations are performed in XAF minor units. Define strong types for `PrincipalID`, `ProviderWalletID`, and `LedgerAccountID` to enhance type safety and prevent common errors. Implement conversion functions between these domain types and their Protobuf representations.",
+            "status": "pending",
+            "testStrategy": "Unit tests for the `Money` type covering arithmetic operations, overflow/underflow checks, and serialization/deserialization. Unit tests for ID types to ensure proper validation and string conversion."
+          },
+          {
+            "id": 5,
+            "title": "Develop Centralized Typed Configuration System",
+            "description": "Create a shared library for loading and managing application configurations, ensuring type safety and supporting environment variables and file-based configuration.",
+            "dependencies": [],
+            "details": "Create a `shared/config/` package. Utilize a configuration library (e.g., `Viper` for Go) to load configurations from multiple sources: YAML/JSON files (e.g., `config.yaml`) and environment variables. Define Go structs for different service configurations (e.g., `DatabaseConfig`, `RedisConfig`, `ServicePortConfig`) with appropriate tags for binding. Implement a `LoadConfig` function that returns a fully typed configuration object, providing default values where necessary.",
+            "status": "pending",
+            "testStrategy": "Unit tests for configuration loading from files, environment variables, and a combination of both. Test default value application and override mechanisms. Ensure type-safe access to configuration parameters."
+          },
+          {
+            "id": 6,
+            "title": "Establish Consistent Error Handling Framework",
+            "description": "Define a standardized error handling mechanism, including custom error types, error codes, and a `Result` type pattern for predictable error propagation across services.",
+            "dependencies": [],
+            "details": "Create a `shared/errors/` package. Define a base `AppError` interface or struct with fields like `Code` (e.g., `INVALID_ARGUMENT`, `NOT_FOUND`), `Message`, and `Details` (for structured error data). Implement common error constructors (e.g., `NewInvalidArgumentError`, `NewNotFoundError`, `NewInternalError`). Provide helper functions for checking error types and extracting error details. Consider adopting a `Result<T, E>` pattern (e.g., Go's `(T, error)` tuple) for function returns.",
+            "status": "pending",
+            "testStrategy": "Unit tests for error creation, error type checking, and error message formatting. Test error wrapping and unwrapping to ensure proper stack trace and context preservation."
+          },
+          {
+            "id": 7,
+            "title": "Integrate OpenTelemetry for Tracing and Metrics",
+            "description": "Set up OpenTelemetry SDK for distributed tracing and metrics collection across all services, ensuring consistent context propagation.",
+            "dependencies": [],
+            "details": "Create a `shared/observability/` package. Implement functions to initialize `TracerProvider` and `MeterProvider`. Configure OTLP exporters to send traces and metrics to a collector (e.g., Jaeger, Prometheus). Provide middleware or interceptors for gRPC servers/clients and HTTP handlers to automatically propagate trace context. Define common attributes for spans and metrics (e.g., service name, environment). Implement basic custom metrics (e.g., request duration, error counts).",
+            "status": "pending",
+            "testStrategy": "Unit tests for tracer and meter initialization. Manual verification using a local OpenTelemetry collector and Jaeger/Prometheus to confirm traces and metrics are emitted and visible for a sample request."
+          },
+          {
+            "id": 8,
+            "title": "Implement Idempotency Mechanism with Redis",
+            "description": "Develop a shared library for managing idempotency keys using Redis, preventing duplicate processing of mutating requests.",
+            "dependencies": [],
+            "details": "Create a `shared/idempotency/` package. Define an `IdempotencyStore` interface with methods like `CheckAndSet(key, result)` and `GetResult(key)`. Implement a `RedisIdempotencyStore` that uses Redis's `SET NX` command for atomic key setting and stores the request's result. Configure a configurable Time-To-Live (TTL) for idempotency keys. Ensure proper error handling and concurrency safety.",
+            "status": "pending",
+            "testStrategy": "Unit tests for `CheckAndSet` (success, duplicate key, concurrent access scenarios). Integration tests with a local Redis instance to verify key storage, retrieval, and expiration."
+          },
+          {
+            "id": 9,
+            "title": "Develop Robust Retry Logic with Backoff and Circuit Breaker",
+            "description": "Create a shared library for robust retry mechanisms, incorporating exponential backoff and a circuit breaker pattern for external API calls.",
+            "dependencies": [],
+            "details": "Create a `shared/retry/` package. Implement a `RetryPolicy` struct with configurable parameters: maximum retries, initial backoff duration, maximum backoff duration, and jitter. Develop a `DoWithRetry` function that takes a function/operation and applies the defined retry policy. Integrate a circuit breaker library (e.g., `Hystrix` or `go-circuitbreaker`) to prevent cascading failures by temporarily stopping requests to failing services.",
+            "status": "pending",
+            "testStrategy": "Unit tests for exponential backoff calculation and jitter. Unit tests for retry logic (success on Nth attempt, max retries reached, specific error types triggering retries). Integration tests to verify circuit breaker opens and closes correctly under simulated failure and recovery scenarios."
+          },
+          {
+            "id": 10,
+            "title": "Define Provider Trait and Mock Implementation",
+            "description": "Define the `Provider` trait (interface) with methods like `deposit`, `withdraw`, `refund`, `query`, `verify_webhook`, and provide a basic mock implementation for testing.",
+            "dependencies": [],
+            "details": "Create a `shared/provider/` package. Define the `Provider` interface with methods: `Deposit(ctx, req) (res, error)`, `Withdraw(ctx, req) (res, error)`, `Refund(ctx, req) (res, error)`, `Query(ctx, req) (res, error)`, and `VerifyWebhook(ctx, req) (res, error)`. Ensure method signatures use Protobuf-generated request/response types and shared error types. Create a `MockProvider` implementation that simulates successful operations, specific error responses, and delays for testing purposes.",
+            "status": "pending",
+            "testStrategy": "Unit tests for the `MockProvider` to ensure it correctly simulates various scenarios (success, specific errors, network delays) as defined by the `Provider` trait."
+          },
+          {
+            "id": 11,
+            "title": "Implement Shared Fee Calculation Logic",
+            "description": "Develop a shared library for calculating various types of fees (e.g., transaction fees, processing fees) based on configurable rules.",
+            "dependencies": [],
+            "details": "Create a `shared/fees/` package. Define `FeeRule` structs that can represent different fee types (e.g., `FixedFee`, `PercentageFee`, `TieredFee`). Implement a `CalculateFee` function that takes a transaction amount (using the `Money` type) and a set of applicable `FeeRule`s, returning the calculated fee amount in XAF minor units. Ensure the logic handles edge cases like minimum/maximum fees and zero-amount transactions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for different fee calculation scenarios: fixed fees, percentage-based fees, tiered fees, and combinations. Test edge cases such as zero transaction amounts, very small/large amounts, and minimum/maximum fee caps."
+          },
+          {
+            "id": 12,
+            "title": "Set Up Comprehensive Test Harness",
+            "description": "Establish a robust test harness for unit, Protobuf schema validation, integration, and end-to-end testing across the monorepo.",
+            "dependencies": [],
+            "details": "Define a `test/` directory for shared test utilities and configurations. Set up the testing framework (e.g., Go's `testing` package with `testify` assertions). Implement a Protobuf schema validation step using `buf lint` or similar tools to enforce schema best practices. Establish conventions for unit test files (`_test.go`), integration test setup (e.g., using Docker Compose for local dependencies like databases/Redis), and a framework for orchestrating end-to-end tests.",
+            "status": "pending",
+            "testStrategy": "Verify test runner setup by writing a simple passing and failing test for each type (unit, integration, schema validation). Ensure the test harness can discover and execute all tests correctly."
+          },
+          {
+            "id": 13,
+            "title": "Create Base Kubernetes and Knative Deployment Manifests",
+            "description": "Develop initial Kubernetes Deployment, Service, and Knative Service manifests for deploying shared libraries and potential future microservices.",
+            "dependencies": [],
+            "details": "Create a `deploy/kubernetes/` directory. Define base `k8s-deployment.yaml` and `k8s-service.yaml` templates for standard Kubernetes deployments. Additionally, create `knative-service.yaml` templates for serverless deployments using Knative. Include basic resource requests/limits, liveness/readiness probes, and environment variable placeholders. Parameterize common values (e.g., image name, tag, service port) for easy reuse.",
+            "status": "pending",
+            "testStrategy": "Manual review of YAML manifests for syntax and correctness. Use `kubectl apply --dry-run` to validate the manifests against a Kubernetes cluster without actual deployment."
+          },
+          {
+            "id": 14,
+            "title": "Integrate Vault/KMS for Secrets Management",
+            "description": "Implement a shared client or utility for securely retrieving secrets from HashiCorp Vault or a cloud Key Management Service (KMS).",
+            "dependencies": [],
+            "details": "Create a `shared/secrets/` package. Define a `SecretManager` interface with a `GetSecret(path, key)` method. Provide an implementation for HashiCorp Vault client (e.g., using `vault-client-go`) that handles authentication (e.g., Kubernetes service account, AppRole) and secret retrieval. Optionally, include an implementation for a cloud KMS (e.g., AWS Secrets Manager, GCP Secret Manager). Integrate with the configuration system to allow services to specify secret paths to load at startup.",
+            "status": "pending",
+            "testStrategy": "Unit tests for secret manager client initialization and authentication. Integration tests with a local Vault instance (e.g., via Docker) to verify successful secret storage and retrieval."
+          },
+          {
+            "id": 15,
+            "title": "Establish CI Pipeline Foundation",
+            "description": "Set up the initial Continuous Integration (CI) pipeline to automate linting, formatting, building, testing, and containerization of shared libraries and services.",
+            "dependencies": [],
+            "details": "Choose a CI platform (e.g., GitHub Actions, GitLab CI, Jenkins). Create the main CI workflow file (e.g., `.github/workflows/ci.yml`). Define stages for `lint` (e.g., `golangci-lint`, `prettier`), `format` (e.g., `go fmt`), `build` (compiling all services and shared libraries), `test` (running unit, integration, and Protobuf validation tests), and `containerize` (building Docker images for services). Ensure artifacts (e.g., Docker images) are produced and tagged appropriately.",
+            "status": "pending",
+            "testStrategy": "Trigger the CI pipeline with a dummy commit and verify that all stages pass successfully. Introduce a deliberate linting error or a failing test to ensure the pipeline correctly identifies and fails on issues."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Implement Core Ledger Service",
+        "description": "Develop the Ledger Service responsible for double-entry accounting, managing journals and entries, enforcing debit=credit invariants, and providing balance queries. This service will be the authoritative source of truth for all financial transactions.",
+        "details": "Implement `PostJournal` gRPC API to record financial transactions. Ensure strict debit=credit invariants for every journal entry (debits == credits). Support single-currency per journal (XAF minor units). Define Ledger Accounts: Float assets (per provider), Customer escrow payable, Merchant payable, Clearing receivable/payable, Fee revenue. Implement `GetBalance` and `ListBalances` gRPC APIs. Use Postgres as the authoritative ledger and state database. Ensure every journal posting is traced via OpenTelemetry.",
+        "testStrategy": "Unit tests for journal posting logic, ensuring debit=credit invariant. Integration tests with Postgres to verify data persistence and retrieval. Test various scenarios: simple debits/credits, multi-leg journals, balance queries. Negative tests for invalid journal entries (e.g., imbalanced debits/credits).",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Develop Unified Provider Gateway (Mock & MTN Sandbox)",
+        "description": "Create the Unified Provider Gateway to abstract away provider-specific APIs. Implement the `Provider` trait for a mock provider and the MTN sandbox environment, handling collection, disbursement, refunds, and webhooks.",
+        "details": "Implement the `Provider` trait (`deposit`, `withdraw`, `refund`, `query`, `verify_webhook`) as defined in shared packages. Develop a `MockProvider` implementation for local development and testing. Develop an `MtnSandboxAdapter` that integrates with the MTN sandbox API for `deposit` (collection), `withdraw` (disbursement), `refund`, `query`, and `verify_webhook`. Handle provider-specific API quirks and error mapping to a unified error model. Ensure idempotency for provider transactions using provider transaction IDs. Utilize NATS/Kafka as an event bus for async workflows and sagas, and Redis for caching.",
+        "testStrategy": "Unit tests for each `Provider` trait method implementation. Integration tests with the `MockProvider` to verify the unified interface. Integration tests with the MTN sandbox environment to validate actual API calls for deposit, withdraw, refund, query, and webhook verification. Test error handling and retry mechanisms for provider API calls.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Payments Service (Escrow & Simple Charge)",
+        "description": "Develop the Payments Service to orchestrate both escrow and simple charge payment lifecycles. This includes creating payments, releasing escrow funds, and handling refunds.",
+        "details": "Implement `CreateEscrow` gRPC API: Call Provider Gateway `deposit` to collect funds, then post ledger entries (debit provider float, credit customer escrow liability). Implement `ReleaseEscrow` gRPC API: Upon merchant confirmation, post ledger entries (debit customer escrow liability, credit merchant payable). Implement `CreateCharge` gRPC API: Call Provider Gateway `deposit` to collect funds, then post ledger entries (directly debit provider float, credit merchant payable). Implement `Refund` gRPC API: Post ledger entries (reverse escrow liability or merchant payable, credit back provider float), then call Provider Gateway `refund` to return funds to the customer. Integrate with the Ledger Service for all financial postings and with the Provider Gateway for all external payment operations. Ensure idempotency for all mutating requests.",
+        "testStrategy": "Unit tests for payment orchestration logic. Integration tests covering the full Escrow Flow: `CreateEscrow` -> `ReleaseEscrow`. Integration tests covering the full Charge Flow: `CreateCharge`. Integration tests for Refund Flow: `Refund` for both escrow and charge scenarios. Verify correct ledger entries are posted for all flows. Test edge cases like failed provider deposits, partial refunds.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Payouts Service (Basic Orange Integration)",
+        "description": "Develop the Payouts Service to execute merchant withdrawals and apply fees. This task includes integrating with the Orange mobile money provider for basic cash-outs.",
+        "details": "Implement `CreatePayout` gRPC API: Debit merchant payable in the Ledger Service, then call Provider Gateway `withdraw` using the Orange adapter. Apply platform fees (initially simple fixed/percentage, configurable fee engine is a future enhancement). Implement `GetPayoutStatus` gRPC API. Integrate with the Ledger Service for debiting merchant payable and with the Provider Gateway for actual fund disbursement. Develop `OrangeSandboxAdapter` for the Provider Gateway, implementing `withdraw` and `query` methods.",
+        "testStrategy": "Unit tests for payout creation and status retrieval logic. Integration tests covering the full Payout Flow with Orange sandbox. Verify correct ledger entries for payout and fee application. Test scenarios for successful and failed payouts.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Develop BFF/API Gateway for Public Access",
+        "description": "Create the Backend-for-Frontend (BFF) / API Gateway to expose a public REST API for merchants, customers, and dashboards. This gateway will serve as the single entry point for external interactions.",
+        "details": "Implement public REST API endpoints: `/charges` (for `CreateCharge`, `GetChargeStatus`), `/escrows` (for `CreateEscrow`, `ReleaseEscrow`, `GetEscrowStatus`), `/payouts` (for `CreatePayout`, `GetPayoutStatus`), `/refunds` (for `Refund`). Map REST requests to internal gRPC calls to Payments and Payouts services. Implement authentication and authorization using Keycloak (identity and org scoping). Ensure consistent error handling and idempotency key propagation. Target latency <500ms p95. Deploy using Kubernetes + Knative.",
+        "testStrategy": "API integration tests for all exposed endpoints. Security tests for authentication and authorization. Performance tests to verify latency requirements. Negative tests for invalid requests and error handling.",
+        "priority": "high",
+        "dependencies": [
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Develop Merchant Dashboard (NextJS MVP)",
+        "description": "Build the initial Merchant Dashboard using NextJS, providing merchants with a view of their escrow vs. available balances and a list of their payouts.",
+        "details": "Set up a NextJS project. Develop UI components to display: Escrow Balance (funds not yet released) vs. Available Balance (funds ready for payout), and a list of payout transactions with status and history. Integrate with the BFF/API Gateway to fetch merchant-specific data. Ensure a clear and intuitive user experience for merchants.",
+        "testStrategy": "UI component unit tests. End-to-end tests for key merchant flows (viewing balances, payout list). Usability testing to ensure clarity of 'Escrow Balance' vs 'Available Balance'. Integration tests with the BFF to ensure data fetching is correct.",
+        "priority": "high",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement Treasury Service (Liquidity Monitoring & Clearing)",
+        "description": "Develop the Treasury Service to monitor liquidity across provider wallets, define thresholds, create internal clearing moves, and trigger top-ups from bank accounts to restore balance.",
+        "details": "Implement `GetWalletStatus` gRPC API to monitor MTN/Orange/Camtel float balances. Define and monitor low-water thresholds for each provider wallet. Implement `PostClearingMove` gRPC API: Post ledger entries for clearing (e.g., debit MTN float, credit clearing receivable; debit clearing payable, credit Orange float). Develop logic to detect float imbalances and recommend/trigger clearing moves. Integrate with a Bank API (mocked initially) for top-ups. Ensure observability with OpenTelemetry, Grafana, and Loki.",
+        "testStrategy": "Unit tests for balance monitoring and threshold logic. Integration tests for `PostClearingMove` with Ledger Service. Simulate float imbalances and verify the service correctly identifies and proposes clearing actions. Test bank API integration (mocked initially) for top-ups.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement Reconciliation Service",
+        "description": "Develop the Reconciliation Service to match internal ledger entries with official statements from mobile money providers, ensuring financial correctness and detecting discrepancies.",
+        "details": "Implement functionality to import provider statements (CSV/API). Normalize imported records to a consistent format. Implement fuzzy matching logic to match provider transactions with internal journal entries. Develop a mechanism to flag mismatches and raise adjustment events. Integrate with Ledger Service to query internal journals. Ensure observability with OpenTelemetry, Grafana, and Loki.",
+        "testStrategy": "Unit tests for statement parsing and normalization. Unit tests for fuzzy matching algorithm with various test data sets (exact matches, partial matches, missing entries). Integration tests with mocked provider statements and Ledger Service. Test scenarios where mismatches occur and verify adjustment events are correctly raised.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Extend Provider Gateway (Camtel & Full Features)",
+        "description": "Extend the Unified Provider Gateway to include full integration with Camtel and enhance existing MTN/Orange integrations to cover all required functionalities (collection, disbursement, refunds, webhooks).",
+        "details": "Develop `CamtelSandboxAdapter` for the Provider Gateway, implementing `deposit`, `withdraw`, `refund`, `query`, and `verify_webhook`. Ensure all `Provider` trait methods are fully implemented and robust for MTN, Orange, and Camtel. Refine webhook handling for all providers, ensuring idempotency and reliable processing of callbacks using provider transaction IDs.",
+        "testStrategy": "Integration tests with Camtel sandbox for all `Provider` trait methods. Comprehensive integration tests for MTN and Orange, covering all features and edge cases. Robust webhook simulation and testing for all providers to ensure correct processing of incoming events.",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Enhance Payouts Service for Cross-Provider Payouts",
+        "description": "Enhance the Payouts Service to enable merchants to cash out on any mobile money provider (MTN, Orange, Camtel) regardless of the payment's origin, leveraging the Treasury Service for liquidity management.",
+        "details": "Modify `CreatePayout` to allow merchants to select their preferred cash-out provider. Integrate with the Treasury Service to check liquidity before initiating a payout. If liquidity is imbalanced, coordinate with Treasury for clearing moves or intelligent routing. Ensure the Ledger accurately tracks clearing moves if liquidity is imbalanced.",
+        "testStrategy": "Integration tests for cross-provider payout scenarios (e.g., MTN payment -> Orange payout). Test scenarios where target provider has low float, verifying Treasury service interaction. Performance tests for payout processing time.",
+        "priority": "medium",
+        "dependencies": [
+          5,
+          8,
+          10
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Implement Risk Service for Fraud Detection",
+        "description": "Develop a Risk Service to perform fraud and anomaly scoring on pay-ins and payouts, enhancing the platform's security and reliability.",
+        "details": "Define data points for risk scoring (e.g., transaction value, frequency, customer history, merchant history, IP address, device info). Implement a basic rule-based or machine learning model for scoring. Integrate with Payments and Payouts services to receive transaction events. Provide an API for risk assessment (`AssessTransactionRisk`). Define actions based on risk scores (e.g., flag for review, block transaction, trigger additional verification).",
+        "testStrategy": "Unit tests for risk scoring logic. Integration tests with Payments/Payouts services to ensure risk assessment is triggered. Test with known fraud patterns and legitimate transactions to verify scoring accuracy. Performance tests for risk assessment latency.",
+        "priority": "low",
+        "dependencies": [
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Implement Configurable Fee Engine",
+        "description": "Develop a flexible and configurable fee engine to support tiered pricing, percentage caps, and organization-level overrides for transaction fees.",
+        "details": "Design a data model for fee configurations (e.g., per transaction type, per merchant, tiered by volume/value). Implement an API to retrieve and apply fees based on configured rules. Integrate the fee engine with the Payments and Payouts services to calculate and apply fees. Ensure fee revenue is correctly posted to the Ledger.",
+        "testStrategy": "Unit tests for fee calculation logic with various configurations (tiered, percentage, fixed, caps). Integration tests with Payments and Payouts services to ensure correct fee application and ledger posting. Test scenarios with organization-specific overrides.",
+        "priority": "low",
+        "dependencies": [
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Develop Dispute Management System",
+        "description": "Implement a system for managing merchant and customer dispute resolution workflows, providing a structured process for handling disagreements over transactions.",
+        "details": "Define dispute states and transitions (e.g., initiated, under review, resolved in favor of customer/merchant, closed). Develop APIs for customers/merchants to initiate disputes and for admins to manage them. Integrate with the Ledger and Payments services to facilitate fund holds/releases based on dispute outcomes. Implement notification mechanisms for dispute updates.",
+        "testStrategy": "Unit tests for dispute state transitions. Integration tests covering the full dispute workflow from initiation to resolution. Test fund adjustments based on dispute outcomes. Test notification delivery.",
+        "priority": "low",
+        "dependencies": [
+          2,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Implement Multi-Organization Reporting and Analytics",
+        "description": "Develop functionality for aggregated analytics and exportable reports for organizations, providing insights into their transactions, balances, and overall platform usage.",
+        "details": "Design data aggregation strategies for various reports (e.g., transaction volume, revenue, payout summaries). Implement APIs to generate reports based on specified criteria (date range, merchant ID, etc.). Provide options for data export (e.g., CSV, PDF). Integrate with Ledger and other services to gather necessary data. Consider performance for large data sets.",
+        "testStrategy": "Unit tests for data aggregation logic. Integration tests for report generation with various filters. Test data export functionality. Performance tests for report generation time with large datasets.",
+        "priority": "low",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-17T22:33:56.207Z",
+      "updated": "2025-08-17T23:19:31.024Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
