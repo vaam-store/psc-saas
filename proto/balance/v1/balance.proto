@@ -7,7 +7,7 @@ option java_package = "com.yourorg.psc.balance.v1";
 option objc_class_prefix = "PSC";
 
 import "google/protobuf/timestamp.proto";
-import "proto/common/v1/common.proto";
+import "common/v1/common.proto";
 
 // Balance service messages and RPCs.
 

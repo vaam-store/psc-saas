@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euxo pipefail
 # scripts/generate_proto.sh
 #
 # Idempotent protoc generation script.

@@ -7,7 +7,7 @@ option java_package = "com.yourorg.psc.payout.v1";
 option objc_class_prefix = "PSC";
 
 import "google/protobuf/timestamp.proto";
-import "proto/common/v1/common.proto";
+import "common/v1/common.proto";
 
 // Payout service messages and RPCs.
 
