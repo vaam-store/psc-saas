@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package psc.common.v1;
+
+option go_package = "github.com/yourorg/psc-saas/gen/go/psc/common/v1;commonv1";
+option java_package = "com.yourorg.psc.common.v1";
+option objc_class_prefix = "PSC";
+
+import "google/protobuf/timestamp.proto";
+
+// Common primitive and shared types used across services.
+
+message Money {
+  // Amount in minor units (e.g., XAF centimes). Use integer math to avoid floating point issues.
+  int64 amount_minor_units = 1;
+
+  // ISO 4217 currency code, e.g., "XAF"
+  string currency_code = 2;
+}
+
+// A lightweight identifier wrapper for entities that are represented as strings.
+// Use specific typedefs in language bindings where possible.
+message ID {
+  string value = 1;
+}
+
+// Standard pagination request used in list endpoints.
+message PaginationRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+// Standard pagination response metadata.
+message Pagination {
+  int32 page = 1;
+  int32 page_size = 2;
+  int64 total_items = 3;
+  int32 total_pages = 4;
+}
+
+// Common timestamp wrapper (re-export of google.protobuf.Timestamp for clarity).
+message Timestamp {
+  google.protobuf.Timestamp value = 1;
+}
+
+// Standard empty message for RPCs that require no payload.
+message Empty {}
+
+// Standard Status message for lightweight responses.
+message Status {
+  int32 code = 1;
+  string message = 2;
+}
