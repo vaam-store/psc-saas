@@ -9,9 +9,11 @@ option objc_class_prefix = "PSC";
 import "google/protobuf/timestamp.proto";
 
 // Common primitive and shared types used across services.
+// Keep messages compact and stable; prefer new fields appended with new numbers.
 
+// Money represents an amount in minor units (e.g., XAF centimes) to avoid floating point issues.
 message Money {
-  // Amount in minor units (e.g., XAF centimes). Use integer math to avoid floating point issues.
+  // Amount in minor units (e.g., cents)
   int64 amount_minor_units = 1;
 
   // ISO 4217 currency code, e.g., "XAF"
@@ -46,7 +48,7 @@ message Timestamp {
 // Standard empty message for RPCs that require no payload.
 message Empty {}
 
-// Standard Status message for lightweight responses.
+// Standard Status message for lightweight responses with a numeric code and message.
 message Status {
   int32 code = 1;
   string message = 2;
