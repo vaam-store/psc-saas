@@ -11,6 +11,9 @@ pub enum Error {
     #[error("internal error: {0}")]
     Internal(String),
 
+    #[error("provider error: {0}")]
+    Provider(String),
+
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
 }

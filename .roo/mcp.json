@@ -12,7 +12,6 @@
       },
       "alwaysAllow": [
         "next_task",
-        "set_task_status",
         "get_tasks",
         "get_task",
         "expand_task"

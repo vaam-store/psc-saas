@@ -7,18 +7,18 @@ option java_package = "com.yourorg.psc.journal.v1";
 option objc_class_prefix = "PSC";
 
 import "google/protobuf/timestamp.proto";
-import "common/v1/common.proto";
+import "psc/common/v1/common.proto";
 
 // Journal service messages and RPCs for ledger entries.
 
 enum EntryType {
   ENTRY_TYPE_UNSPECIFIED = 0;
-  DEBIT = 1;
-  CREDIT = 2;
+  ENTRY_TYPE_DEBIT = 1;
+  ENTRY_TYPE_CREDIT = 2;
 }
 
 message JournalEntry {
-  psc.common.v1.ID id = 1;
+  psc.common.v1.Id id = 1;
   psc.common.v1.Money amount = 2;
   EntryType type = 3;
   string account = 4; // accounting ledger account identifier
@@ -40,8 +40,12 @@ message PostJournalResponse {
   repeated JournalEntry posted_entries = 1;
 }
 
+message GetJournalEntryResponse {
+  JournalEntry journal_entry = 1;
+}
+
 message GetJournalEntryRequest {
-  psc.common.v1.ID id = 1;
+  psc.common.v1.Id id = 1;
 }
 
 message ListJournalEntriesRequest {
@@ -59,6 +63,6 @@ message ListJournalEntriesResponse {
 // Service definition
 service JournalService {
   rpc PostJournal(PostJournalRequest) returns (PostJournalResponse);
-  rpc GetJournalEntry(GetJournalEntryRequest) returns (JournalEntry);
+  rpc GetJournalEntry(GetJournalEntryRequest) returns (GetJournalEntryResponse);
   rpc ListJournalEntries(ListJournalEntriesRequest) returns (ListJournalEntriesResponse);
 }

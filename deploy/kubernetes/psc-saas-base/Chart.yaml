@@ -1,0 +1,11 @@
+apiVersion: v2
+name: psc-saas-base
+description: A base Helm chart for PSC SaaS microservices.
+version: 0.1.0
+appVersion: "0.1.0"
+
+dependencies:
+  - name: common
+    version: "1.x.x" # Use the latest compatible version
+    repository: "oci://registry-1.docker.io/bitnamicharts"
+    alias: common

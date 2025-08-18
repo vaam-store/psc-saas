@@ -7,16 +7,20 @@ option java_package = "com.yourorg.psc.balance.v1";
 option objc_class_prefix = "PSC";
 
 import "google/protobuf/timestamp.proto";
-import "common/v1/common.proto";
+import "psc/common/v1/common.proto";
 
 // Balance service messages and RPCs.
 
 message GetBalanceRequest {
-  psc.common.v1.ID account_id = 1;
+  psc.common.v1.Id account_id = 1;
+}
+
+message GetBalanceResponse {
+  Balance balance = 1;
 }
 
 message Balance {
-  psc.common.v1.ID account_id = 1;
+  psc.common.v1.Id account_id = 1;
   psc.common.v1.Money available = 2;
   psc.common.v1.Money reserved = 3;
   psc.common.v1.Money ledger = 4;
@@ -36,6 +40,6 @@ message ListBalancesResponse {
 
 // Service definition
 service BalanceService {
-  rpc GetBalance(GetBalanceRequest) returns (Balance);
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
   rpc ListBalances(ListBalancesRequest) returns (ListBalancesResponse);
 }

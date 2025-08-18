@@ -5,14 +5,15 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-rust_decimal = { workspace = true, features = ["serde-with-str"] }
+rust_decimal = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 uuid = { workspace = true, features = ["v4", "serde"] }
 psc-error = { workspace = true }
+rust_decimal_macros = { workspace = true }
+num-traits = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
-rust_decimal_macros = { workspace = true }
 serde = { workspace = true }
 
 [lints]

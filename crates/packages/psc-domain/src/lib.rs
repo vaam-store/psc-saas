@@ -1,16 +1,27 @@
-use psc_error::{Error, Result};
 use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
 use serde::{Deserialize, Serialize};
+use std::ops::{Add, AddAssign};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Money {
     amount: Decimal,
     currency: &'static str,
 }
 
 impl Money {
-    pub fn new(amount: Decimal, currency: &'static str) -> Self {
-        Self { amount, currency }
+    pub fn new(amount: i64, currency: &'static str) -> Self {
+        Self {
+            amount: Decimal::from(amount),
+            currency,
+        }
+    }
+
+    pub fn zero(currency: &'static str) -> Self {
+        Self {
+            amount: Decimal::ZERO,
+            currency,
+        }
     }
 
     pub fn amount(&self) -> Decimal {
@@ -21,28 +32,35 @@ impl Money {
         self.currency
     }
 
-    pub fn add(&self, other: &Self) -> Result<Self> {
-        if self.currency != other.currency {
-            return Err(Error::InvalidArgument(
-                "Cannot add money with different currencies".to_string(),
-            ));
+    pub fn multiply_percent(&self, percent: f64) -> Self {
+        let percentage = Decimal::from_f64(percent / 100.0).unwrap();
+        Self {
+            amount: self.amount * percentage,
+            currency: self.currency,
         }
-        Ok(Self {
+    }
+}
+
+impl Add for Money {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        if self.currency != other.currency {
+            panic!("Cannot add money with different currencies");
+        }
+        Self {
             amount: self.amount + other.amount,
             currency: self.currency,
-        })
-    }
-
-    pub fn sub(&self, other: &Self) -> Result<Self> {
-        if self.currency != other.currency {
-            return Err(Error::InvalidArgument(
-                "Cannot subtract money with different currencies".to_string(),
-            ));
         }
-        Ok(Self {
-            amount: self.amount - other.amount,
-            currency: self.currency,
-        })
+    }
+}
+
+impl AddAssign for Money {
+    fn add_assign(&mut self, other: Self) {
+        if self.currency != other.currency {
+            panic!("Cannot add money with different currencies");
+        }
+        self.amount += other.amount;
     }
 }
 

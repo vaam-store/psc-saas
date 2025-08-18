@@ -1,0 +1,9 @@
+[package]
+name = "psc-fees"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+psc-domain = { path = "../psc-domain" }
+thiserror = "1.0"
+anyhow = "1.0"

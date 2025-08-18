@@ -98,7 +98,7 @@
             "description": "Define the `Provider` trait (interface) with methods like `deposit`, `withdraw`, `refund`, `query`, `verify_webhook`, and provide a basic mock implementation for testing.",
             "dependencies": [],
             "details": "Create a `shared/provider/` package. Define the `Provider` interface with methods: `Deposit(ctx, req) (res, error)`, `Withdraw(ctx, req) (res, error)`, `Refund(ctx, req) (res, error)`, `Query(ctx, req) (res, error)`, and `VerifyWebhook(ctx, req) (res, error)`. Ensure method signatures use Protobuf-generated request/response types and shared error types. Create a `MockProvider` implementation that simulates successful operations, specific error responses, and delays for testing purposes.",
-            "status": "in-progress",
+            "status": "done",
             "testStrategy": "Unit tests for the `MockProvider` to ensure it correctly simulates various scenarios (success, specific errors, network delays) as defined by the `Provider` trait."
           },
           {
@@ -107,7 +107,7 @@
             "description": "Develop a shared library for calculating various types of fees (e.g., transaction fees, processing fees) based on configurable rules.",
             "dependencies": [],
             "details": "Create a `shared/fees/` package. Define `FeeRule` structs that can represent different fee types (e.g., `FixedFee`, `PercentageFee`, `TieredFee`). Implement a `CalculateFee` function that takes a transaction amount (using the `Money` type) and a set of applicable `FeeRule`s, returning the calculated fee amount in XAF minor units. Ensure the logic handles edge cases like minimum/maximum fees and zero-amount transactions.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for different fee calculation scenarios: fixed fees, percentage-based fees, tiered fees, and combinations. Test edge cases such as zero transaction amounts, very small/large amounts, and minimum/maximum fee caps."
           },
           {
@@ -116,7 +116,7 @@
             "description": "Establish a robust test harness for unit, Protobuf schema validation, integration, and end-to-end testing across the monorepo.",
             "dependencies": [],
             "details": "Define a `test/` directory for shared test utilities and configurations. Set up the testing framework (e.g., Go's `testing` package with `testify` assertions). Implement a Protobuf schema validation step using `buf lint` or similar tools to enforce schema best practices. Establish conventions for unit test files (`_test.go`), integration test setup (e.g., using Docker Compose for local dependencies like databases/Redis), and a framework for orchestrating end-to-end tests.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify test runner setup by writing a simple passing and failing test for each type (unit, integration, schema validation). Ensure the test harness can discover and execute all tests correctly."
           },
           {
@@ -125,7 +125,7 @@
             "description": "Develop initial Kubernetes Deployment, Service, and Knative Service manifests for deploying shared libraries and potential future microservices.",
             "dependencies": [],
             "details": "Create a `deploy/kubernetes/` directory. Define base `k8s-deployment.yaml` and `k8s-service.yaml` templates for standard Kubernetes deployments. Additionally, create `knative-service.yaml` templates for serverless deployments using Knative. Include basic resource requests/limits, liveness/readiness probes, and environment variable placeholders. Parameterize common values (e.g., image name, tag, service port) for easy reuse.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Manual review of YAML manifests for syntax and correctness. Use `kubectl apply --dry-run` to validate the manifests against a Kubernetes cluster without actual deployment."
           },
           {
@@ -134,7 +134,7 @@
             "description": "Implement a shared client or utility for securely retrieving secrets from HashiCorp Vault or a cloud Key Management Service (KMS).",
             "dependencies": [],
             "details": "Create a `shared/secrets/` package. Define a `SecretManager` interface with a `GetSecret(path, key)` method. Provide an implementation for HashiCorp Vault client (e.g., using `vault-client-go`) that handles authentication (e.g., Kubernetes service account, AppRole) and secret retrieval. Optionally, include an implementation for a cloud KMS (e.g., AWS Secrets Manager, GCP Secret Manager). Integrate with the configuration system to allow services to specify secret paths to load at startup.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for secret manager client initialization and authentication. Integration tests with a local Vault instance (e.g., via Docker) to verify successful secret storage and retrieval."
           },
           {
@@ -339,11 +339,24 @@
         ],
         "status": "pending",
         "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Fix Buf Protobuf Generation Issues",
+        "description": "The `buf generate` command is failing with 'plugin not found' errors for community plugins (namely-protoc-gen-prost) and 'field managed not found' errors in buf.yaml. This task involves investigating and resolving these Buf Schema Registry (BSR) plugin resolution and buf.yaml schema compatibility issues to ensure successful Protobuf code generation.",
+        "details": "Investigate 'plugin not found' errors for `protoc-gen-prost`:\n- Verify `buf.gen.yaml` configuration for correct plugin invocation and output paths.\n- Ensure `protoc-gen-prost` is correctly installed and discoverable in the system's PATH or specified via `buf.yaml`'s `managed` configuration.\n- Consult Buf Schema Registry (BSR) documentation for community plugin resolution best practices.\n- Check for compatibility issues between the Buf CLI version and the `protoc-gen-prost` version.\n\nInvestigate 'field managed not found' errors in `buf.yaml`:\n- Identify the exact `buf.yaml` schema version being used (e.g., `version: v1beta1`, `version: v1`).\n- Compare the `buf.yaml` structure and the usage of the `managed` field against the official Buf documentation for the identified schema version.\n- If `managed` is a newer feature, ensure the Buf CLI is updated to a version that supports it.\n- Correct any syntax errors or misconfigurations related to the `managed` field in `buf.yaml`.\n\nGeneral Resolution Steps:\n- Document all findings, troubleshooting steps, and the final resolution.\n- Update relevant documentation (e.g., README, developer guides) with any changes to the Protobuf generation process or required tooling versions.\n- Ensure that the fix is robust and does not introduce new issues or regressions.\n- Verify that CI/CD pipelines can successfully generate Protobuf code after the fix.",
+        "testStrategy": "1. Run `buf generate` locally in the project's root directory to confirm that the command executes without any 'plugin not found' or 'field managed not found' errors.\n2. Verify that all expected Protobuf-generated code (e.g., Rust structs from `protoc-gen-prost`) is correctly generated and up-to-date.\n3. Compile the project to ensure that the newly generated Protobuf code integrates seamlessly and does not introduce compilation errors.\n4. If applicable, run existing unit and integration tests that rely on Protobuf messages to ensure data serialization/deserialization works as expected.\n5. Push the changes to a feature branch and verify that the CI/CD pipeline successfully completes the Protobuf generation step and subsequent builds/tests.\n6. Test with different Buf CLI versions (if version compatibility was a root cause) to ensure backward or forward compatibility as needed.",
+        "status": "pending",
+        "dependencies": [
+          2
+        ],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-08-17T22:33:56.207Z",
-      "updated": "2025-08-18T10:29:39.997Z",
+      "updated": "2025-08-18T14:18:41.734Z",
       "description": "Tasks for master context"
     }
   }

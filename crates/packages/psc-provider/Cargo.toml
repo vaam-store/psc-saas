@@ -10,6 +10,21 @@ license = "MIT"
 async-trait = "0.1"
 thiserror = "1.0"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "time", "sync"] }
+tonic = { workspace = true }
+prost = { workspace = true }
+tonic-prost = { workspace = true }
+psc-error = { workspace = true }
+psc-domain = { workspace = true }
+cuid = { workspace = true }
+prost-types = { workspace = true }
+
+[build-dependencies]
+tonic-build = { workspace = true }
+prost-build = { workspace = true }
+tonic-prost-build = { workspace = true }
 
 [dev-dependencies]
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "time", "sync"] }
+
+[features]
+mock = []

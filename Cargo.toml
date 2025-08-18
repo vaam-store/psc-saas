@@ -7,6 +7,7 @@ members = [
     "crates/clients/psc-orange-money",
     "crates/apis/psc-api-charges",
     "crates/apis/psc-api-escrow",
+    "crates/apis/psc-api-metrics",
     "crates/apis/psc-api-webhook",
     "crates/packages/psc-ledger",
     "crates/packages/psc-domain",
@@ -15,7 +16,9 @@ members = [
     "crates/packages/psc-telemetry",
     "crates/packages/psc-idempotency",
     "crates/packages/psc-retry",
-    "crates/packages/psc-provider",
+    "crates/packages/psc-provider", 
+    "crates/packages/psc-fees", 
+    "crates/packages/psc-secrets", "crates/packages/psc-config-loader",
 ]
 resolver = "3"
 
@@ -36,6 +39,7 @@ psc-orange-money = { path = "./crates/clients/psc-orange-money" }
 
 psc-api-charges = { path = "./crates/apis/psc-api-charges" }
 psc-api-escrow = { path = "./crates/apis/psc-api-escrow" }
+psc-api-metrics = { path = "./crates/apis/psc-api-metrics" }
 psc-api-webhook = { path = "./crates/apis/psc-api-webhook" }
 
 psc-ledger = { path = "./crates/packages/psc-ledger" }
@@ -48,6 +52,8 @@ psc-retry = { path = "./crates/packages/psc-retry" }
 
 axum = { version = "0.8", features = ["macros", "http2"] }
 tonic = { version = "0.14", features = ["gzip"] }
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1.0", features = ["full"] }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -55,12 +61,21 @@ thiserror = "2"
 anyhow = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 time = { version = "0.3", features = ["serde-human-readable", "serde"] }
+url = "2.5"
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "migrate", "tls-rustls"] }
 redis = { version = "0", features = ["tokio-comp"] }
-rust_decimal = "1"
+rust_decimal = { version = "1", features = ["std"] }
 rust_decimal_macros = "1"
+num-traits = "0.2"
 
 cuid = { version = "1"}
+tonic-reflection = "0"
+tonic-build = "0"
+tonic-prost-build = "0.14.1"
+prost = "0.14.1"
+prost-types = "0.14.1"
+prost-build = "0.14.1"
+tonic-prost = "0.14.1"
 
 mimalloc = "0"
 
@@ -71,6 +86,7 @@ tower-http = { version = "0.6", features = ["compression-full", "cors"] }
 
 # For async traits
 async-trait = "0.1" # Required for async methods in traits
+futures = "0.3"
 
 opentelemetry = { version = "0.29" }
 opentelemetry-otlp = { version = "0.29", features = ["tokio", "metrics", "trace", "grpc-tonic", "gzip-tonic"] }
@@ -80,6 +96,10 @@ tracing-subscriber = { version = "0", features = ["env-filter", "fmt"] }
 tracing-opentelemetry = { version = "0.30" }
 tracing = { version = "0", features = ["attributes"] }
 prometheus = { version = "0" }
+
+[workspace.dev-dependencies]
+wiremock = "0.6"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 
 [profile.prod]
 inherits = "release"
