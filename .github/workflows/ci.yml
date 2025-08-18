@@ -7,32 +7,81 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build:
+  ci:
+    name: Lint • Build • Test • Proto • Containerize
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      CARGO_TERM_COLOR: always
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
+      - name: Cache Cargo registry and index
+        uses: actions/cache@v4
         with:
-          go-version: '1.21'
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
 
-      - name: Install protoc (via apt) and tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-          # Install protobuf plugins for Go and gateway/OpenAPI using go install
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-          go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest
-          go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
 
-      - name: Run proto generation
+      - name: Install cargo-deny (optional)
         run: |
-          make proto-gen
+          cargo install cargo-deny --locked || true
 
-      - name: Run tests
+      - name: Ensure formatting (cargo fmt check)
         run: |
-          # Add test steps as appropriate for the repository
-          echo "No tests configured in CI workflow yet"
+          rustup component add rustfmt || true
+          cargo fmt --all -- --check
+
+      - name: Run clippy (lints)
+        run: |
+          rustup component add clippy || true
+          cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Generate protobufs (if script exists)
+        run: |
+          if [ -x ./scripts/generate_proto.sh ]; then
+            ./scripts/generate_proto.sh
+          else
+            echo "No proto generation script found; skipping"
+          fi
+
+      - name: Build workspace
+        run: cargo build --workspace --verbose
+
+      - name: Run unit & integration tests
+        run: cargo test --workspace --all --verbose
+
+      - name: Build container images (local, no push)
+        if: always()
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            # build a generic image for the main service as a validation step
+            # replace ./services/your-service with actual service path as needed
+            docker build -t psc-saas-ci:latest -f deploy/Dockerfile . || echo "Docker build skipped or failed"
+          else
+            echo "Docker not available on runner; skipping container build"
+          fi
+
+      - name: Upload test reports and logs (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-logs
+          path: |
+            target/debug
+            target/debug/deps
+            ./**/target/debug || true
