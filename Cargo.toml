@@ -8,7 +8,7 @@ members = [
     "crates/apis/psc-api-charges",
     "crates/apis/psc-api-escrow",
     "crates/apis/psc-api-webhook",
-    "crates/packages/psc-ledger",
+    "crates/packages/psc-ledger", "crates/packages/psc-domain",
 ]
 resolver = "3"
 
@@ -32,6 +32,7 @@ psc-api-escrow = { path = "./crates/apis/psc-api-escrow" }
 psc-api-webhook = { path = "./crates/apis/psc-api-webhook" }
 
 psc-ledger = { path = "./crates/packages/psc-ledger" }
+psc-domain = { path = "./crates/packages/psc-domain" }
 
 axum = { version = "0.8", features = ["macros", "http2"] }
 tonic = { version = "0.14", features = ["gzip"] }
@@ -47,6 +48,8 @@ uuid = { version = "1", features = ["v4", "serde"] }
 time = { version = "0.3", features = ["serde-human-readable"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "migrate", "tls-rustls"] }
 redis = { version = "0", features = ["tokio-comp"] }
+rust_decimal = "1"
+rust_decimal_macros = "1"
 
 
 mimalloc = "0"
