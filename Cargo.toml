@@ -14,6 +14,7 @@ members = [
     "crates/packages/psc-error", 
     "crates/packages/psc-telemetry", 
     "crates/packages/psc-idempotency",
+    "crates/packages/psc-retry",
 ]
 resolver = "3"
 
@@ -38,9 +39,11 @@ psc-api-webhook = { path = "./crates/apis/psc-api-webhook" }
 
 psc-ledger = { path = "./crates/packages/psc-ledger" }
 psc-domain = { path = "./crates/packages/psc-domain" }
+psc-config = { path = "./crates/packages/psc-config" }
 psc-error = { path = "./crates/packages/psc-error" }
 psc-idempotency = { path = "./crates/packages/psc-idempotency" }
 psc-telemetry = { path = "./crates/packages/psc-telemetry" }
+psc-retry = { path = "./crates/packages/psc-retry" }
 
 axum = { version = "0.8", features = ["macros", "http2"] }
 tonic = { version = "0.14", features = ["gzip"] }

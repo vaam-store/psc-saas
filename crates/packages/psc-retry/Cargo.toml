@@ -1,0 +1,17 @@
+[package]
+name = "psc-retry"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3"
+description = "Robust retry mechanisms with exponential backoff and circuit breaker pattern for external API calls"
+repository = "https://github.com/psc-saas/psc-saas"
+homepage = "https://psc-saas.com"
+
+[dependencies]
+thiserror.workspace = true
+tokio = { version = "1", features = ["time", "sync"] }
+tracing.workspace = true
+rand = "0.8"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt", "time"] }

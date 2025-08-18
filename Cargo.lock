@@ -1907,6 +1907,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "psc-retry"
+version = "0.1.0"
+dependencies = [
+ "rand 0.8.5",
+ "thiserror 2.0.15",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "psc-telemetry"
 version = "0.1.0"
 dependencies = [
