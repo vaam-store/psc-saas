@@ -9,6 +9,7 @@ anyhow.workspace = true
 rust_decimal = { workspace = true, features = ["serde-with-str"] }
 serde = { workspace = true, features = ["derive"] }
 uuid = { workspace = true, features = ["v4", "serde"] }
+psc-error = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }

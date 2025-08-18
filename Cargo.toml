@@ -8,7 +8,7 @@ members = [
     "crates/apis/psc-api-charges",
     "crates/apis/psc-api-escrow",
     "crates/apis/psc-api-webhook",
-    "crates/packages/psc-ledger", "crates/packages/psc-domain",
+    "crates/packages/psc-ledger", "crates/packages/psc-domain", "crates/packages/psc-config", "crates/packages/psc-error",
 ]
 resolver = "3"
 
@@ -33,6 +33,7 @@ psc-api-webhook = { path = "./crates/apis/psc-api-webhook" }
 
 psc-ledger = { path = "./crates/packages/psc-ledger" }
 psc-domain = { path = "./crates/packages/psc-domain" }
+psc-error = { path = "./crates/packages/psc-error" }
 
 axum = { version = "0.8", features = ["macros", "http2"] }
 tonic = { version = "0.14", features = ["gzip"] }

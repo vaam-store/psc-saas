@@ -25,6 +25,8 @@ fn test_add_money_different_currencies() {
     let m2 = Money::new(dec!(50.25), "USD");
     let result = m1.add(&m2);
     assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(matches!(err, psc_error::Error::InvalidArgument(_)));
 }
 
 #[test]
@@ -33,4 +35,6 @@ fn test_sub_money_different_currencies() {
     let m2 = Money::new(dec!(50.25), "USD");
     let result = m1.sub(&m2);
     assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(matches!(err, psc_error::Error::InvalidArgument(_)));
 }

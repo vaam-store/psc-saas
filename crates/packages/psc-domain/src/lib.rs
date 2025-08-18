@@ -1,4 +1,4 @@
-use anyhow::Result;
+use psc_error::{Error, Result};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -23,8 +23,8 @@ impl Money {
 
     pub fn add(&self, other: &Self) -> Result<Self> {
         if self.currency != other.currency {
-            return Err(anyhow::anyhow!(
-                "Cannot add money with different currencies"
+            return Err(Error::InvalidArgument(
+                "Cannot add money with different currencies".to_string(),
             ));
         }
         Ok(Self {
@@ -35,8 +35,8 @@ impl Money {
 
     pub fn sub(&self, other: &Self) -> Result<Self> {
         if self.currency != other.currency {
-            return Err(anyhow::anyhow!(
-                "Cannot subtract money with different currencies"
+            return Err(Error::InvalidArgument(
+                "Cannot subtract money with different currencies".to_string(),
             ));
         }
         Ok(Self {
