@@ -8,7 +8,7 @@ members = [
     "crates/apis/psc-api-charges",
     "crates/apis/psc-api-escrow",
     "crates/apis/psc-api-webhook",
-    "crates/packages/psc-ledger", "crates/packages/psc-domain", "crates/packages/psc-config", "crates/packages/psc-error",
+    "crates/packages/psc-ledger", "crates/packages/psc-domain", "crates/packages/psc-config", "crates/packages/psc-error", "crates/packages/psc-telemetry",
 ]
 resolver = "3"
 
@@ -34,16 +34,19 @@ psc-api-webhook = { path = "./crates/apis/psc-api-webhook" }
 psc-ledger = { path = "./crates/packages/psc-ledger" }
 psc-domain = { path = "./crates/packages/psc-domain" }
 psc-error = { path = "./crates/packages/psc-error" }
+psc-telemetry = { path = "./crates/packages/psc-telemetry" }
 
 axum = { version = "0.8", features = ["macros", "http2"] }
 tonic = { version = "0.14", features = ["gzip"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-opentelemetry = "0.25"
 opentelemetry = { version = "0.30", features = ["trace"] }
-opentelemetry-otlp = "0.30"
+opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.21", features = ["grpc-tonic"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-thiserror = "2"
+thiserror = "1"
 anyhow = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 time = { version = "0.3", features = ["serde-human-readable"] }
