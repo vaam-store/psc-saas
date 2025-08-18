@@ -74,9 +74,9 @@ services:
       - -g
       - rust
       - -o
-      - /packages/psc-orange-orange
+      - /packages/psc-orange-money
       - --package-name
-      - psc-orange-orange
+      - psc-orange-money
 
   oat-gen-api-charges:
     image: openapitools/openapi-generator-cli

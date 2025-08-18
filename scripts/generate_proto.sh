@@ -8,9 +8,9 @@ set -euxo pipefail
 # - Designed for local dev and CI usage
 #
 # Usage:
-#   PROTO_ROOT=proto OUT_DIR=gen ./scripts/generate_proto.sh
+#   PROTO_ROOT=protos OUT_DIR=gen ./scripts/generate_proto.sh
 #
-PROTO_ROOT="${PROTO_ROOT:-proto}"
+PROTO_ROOT="${PROTO_ROOT:-protos}"
 OUT_DIR="${OUT_DIR:-gen}"
 GO_OUT_DIR="${OUT_DIR}/go"
 TS_OUT_DIR="${OUT_DIR}/ts"

@@ -4,11 +4,16 @@ members = [
     "crates/clients/psc-mtn-disbursement",
     "crates/clients/psc-mtn-remittance",
     "crates/clients/psc-mtn-sandbox-provisioning",
-    "crates/clients/psc-orange-orange",
+    "crates/clients/psc-orange-money",
     "crates/apis/psc-api-charges",
     "crates/apis/psc-api-escrow",
     "crates/apis/psc-api-webhook",
-    "crates/packages/psc-ledger", "crates/packages/psc-domain", "crates/packages/psc-config", "crates/packages/psc-error", "crates/packages/psc-telemetry",
+    "crates/packages/psc-ledger", 
+    "crates/packages/psc-domain", 
+    "crates/packages/psc-config", 
+    "crates/packages/psc-error", 
+    "crates/packages/psc-telemetry", 
+    "crates/packages/psc-idempotency",
 ]
 resolver = "3"
 
@@ -25,7 +30,7 @@ psc-mtn-collection = { path = "./crates/clients/psc-mtn-collection" }
 psc-mtn-disbursement = { path = "./crates/clients/psc-mtn-disbursement" }
 psc-mtn-remittance = { path = "./crates/clients/psc-mtn-remittance" }
 psc-mtn-sandbox-provisioning = { path = "./crates/clients/psc-mtn-sandbox-provisioning" }
-psc-orange-orange = { path = "./crates/clients/psc-orange-orange" }
+psc-orange-money = { path = "./crates/clients/psc-orange-money" }
 
 psc-api-charges = { path = "./crates/apis/psc-api-charges" }
 psc-api-escrow = { path = "./crates/apis/psc-api-escrow" }
@@ -34,29 +39,43 @@ psc-api-webhook = { path = "./crates/apis/psc-api-webhook" }
 psc-ledger = { path = "./crates/packages/psc-ledger" }
 psc-domain = { path = "./crates/packages/psc-domain" }
 psc-error = { path = "./crates/packages/psc-error" }
+psc-idempotency = { path = "./crates/packages/psc-idempotency" }
 psc-telemetry = { path = "./crates/packages/psc-telemetry" }
 
 axum = { version = "0.8", features = ["macros", "http2"] }
 tonic = { version = "0.14", features = ["gzip"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tracing-opentelemetry = "0.25"
-opentelemetry = { version = "0.30", features = ["trace"] }
-opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.21", features = ["grpc-tonic"] }
+
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-thiserror = "1"
+thiserror = "2"
 anyhow = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
-time = { version = "0.3", features = ["serde-human-readable"] }
+time = { version = "0.3", features = ["serde-human-readable", "serde"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "migrate", "tls-rustls"] }
 redis = { version = "0", features = ["tokio-comp"] }
 rust_decimal = "1"
 rust_decimal_macros = "1"
 
+cuid = { version = "1"}
 
 mimalloc = "0"
+
+axum-extra = { version = "0.10", features = ["cookie", "multipart"] }
+axum-otel-metrics = { version = "0" }
+axum-tracing-opentelemetry = { version = "0.29" }
+tower-http = { version = "0.6", features = ["compression-full", "cors"] }
+
+# For async traits
+async-trait = "0.1" # Required for async methods in traits
+
+opentelemetry = { version = "0.29" }
+opentelemetry-otlp = { version = "0.29", features = ["tokio", "metrics", "trace", "grpc-tonic", "gzip-tonic"] }
+opentelemetry_sdk = { version = "0.29", features = ["tokio", "metrics", "rt-tokio", "trace"] }
+opentelemetry-prometheus = { version = "0" }
+tracing-subscriber = { version = "0", features = ["env-filter", "fmt"] }
+tracing-opentelemetry = { version = "0.30" }
+tracing = { version = "0", features = ["attributes"] }
+prometheus = { version = "0" }
 
 [profile.prod]
 inherits = "release"

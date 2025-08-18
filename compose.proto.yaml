@@ -11,29 +11,33 @@ services:
   # mounted workspace so they are available on the host filesystem.
   protoc:
     image: golang:1-alpine
-    container_name: protoc-gen
     tty: false
     stdin_open: false
     working_dir: /workspace
+    entrypoint: /bin/sh
     volumes:
-      - ./:/workspace:rw
+      - ./gen:/workspace/gen:rw
+      - ./protos:/workspace/protos:ro
+      - ./scripts/generate_proto.sh:/workspace/generate_proto.sh:ro
     # Use a short init command that installs necessary packages (curl, unzip, protoc package)
     # then calls the repo-provided script to perform generation. We keep the commands in
     # a single-line shell form so `docker compose run --rm protoc` just executes and exits.
-    command: >
-      sh -exc "
-        export PATH=\"$PATH:$(go env GOPATH)/bin\"
-        apk update && \
-        apk add --no-cache bash curl unzip make gcc musl-dev protobuf protobuf-dev && \
+    command: 
+      - -c
+      - |
+        set -ex
+        
+        #export PATH=\"$PATH:$(go env GOPATH)/bin"
+        apk update
+        apk add --no-cache bash curl unzip make gcc musl-dev protobuf protobuf-dev
+        
         # Install protoc plugins
-        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
-        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest && \
-        go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest && \
-        go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest && \
-        # ensure scripts are executable
-        chmod +x ./scripts/generate_proto.sh && \
-        ./scripts/generate_proto.sh
-      "
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest
+        go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
+        
+        bash ./generate_proto.sh
     # Do not restart — this is a one-shot generator
     restart: "no"
     # Keep service ephemeral
