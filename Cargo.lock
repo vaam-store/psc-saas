@@ -1907,6 +1907,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "psc-provider"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "thiserror 1.0.69",
+ "tokio",
+]
+
+[[package]]
 name = "psc-retry"
 version = "0.1.0"
 dependencies = [

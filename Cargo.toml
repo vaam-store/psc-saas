@@ -8,13 +8,14 @@ members = [
     "crates/apis/psc-api-charges",
     "crates/apis/psc-api-escrow",
     "crates/apis/psc-api-webhook",
-    "crates/packages/psc-ledger", 
-    "crates/packages/psc-domain", 
-    "crates/packages/psc-config", 
-    "crates/packages/psc-error", 
-    "crates/packages/psc-telemetry", 
+    "crates/packages/psc-ledger",
+    "crates/packages/psc-domain",
+    "crates/packages/psc-config",
+    "crates/packages/psc-error",
+    "crates/packages/psc-telemetry",
     "crates/packages/psc-idempotency",
     "crates/packages/psc-retry",
+    "crates/packages/psc-provider",
 ]
 resolver = "3"
 
