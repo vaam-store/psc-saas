@@ -9,7 +9,7 @@
         "testStrategy": "Unit tests for each shared utility (e.g., idempotency, retry logic, money calculations). Schema validation tests for Protobuf definitions. Integration tests to ensure shared components work together correctly.",
         "priority": "high",
         "dependencies": [],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -142,8 +142,8 @@
             "title": "Establish CI Pipeline Foundation",
             "description": "Set up the initial Continuous Integration (CI) pipeline to automate linting, formatting, building, testing, and containerization of shared libraries and services.",
             "dependencies": [],
-            "details": "Choose a CI platform (e.g., GitHub Actions, GitLab CI, Jenkins). Create the main CI workflow file (e.g., `.github/workflows/ci.yml`). Define stages for `lint` (e.g., `golangci-lint`, `prettier`), `format` (e.g., `go fmt`), `build` (compiling all services and shared libraries), `test` (running unit, integration, and Protobuf validation tests), and `containerize` (building Docker images for services). Ensure artifacts (e.g., Docker images) are produced and tagged appropriately.",
-            "status": "pending",
+            "details": "Choose a CI platform (e.g., GitHub Actions, GitLab CI, Jenkins). Create the main CI workflow file (e.g., `.github/workflows/ci.yml`). Define stages for `lint` (e.g., `golangci-lint`, `prettier`), `format` (e.g., `go fmt`), `build` (compiling all services and shared libraries), `test` (running unit, integration, and Protobuf validation tests), and `containerize` (building Docker images for services). Ensure artifacts (e.g., Docker images) are produced and tagged appropriately.\n<info added on 2025-08-18T14:36:37.057Z>\nWork has begun on this subtask. The existing .github/workflows/ci.yml has been inspected and provides a robust baseline including cargo registry/index cache, Rust toolchain setup, fmt + clippy checks, proto generation hook, workspace build/test, optional docker build, and artifact upload. Planned incremental changes include: adding cache for the cargo 'target' directory; splitting the monolithic job into 'lint' (rustfmt + clippy) and 'build-test' (build + test) with proper job ordering; improving cache keys to include Cargo.lock and top-level Cargo.toml for better invalidation; optionally adding a runner matrix (ubuntu-latest, macos-latest) for cross-platform validation; and ensuring artifact upload path patterns include per-crate test outputs while making the Docker build step conditional. Next steps involve applying these targeted edits to the workflow file, committing changes with \"feat(ci): establish CI pipeline foundation\", and providing a diff for review.\n</info added on 2025-08-18T14:36:37.057Z>",
+            "status": "done",
             "testStrategy": "Trigger the CI pipeline with a dummy commit and verify that all stages pass successfully. Introduce a deliberate linting error or a failing test to ensure the pipeline correctly identifies and fails on issues."
           }
         ]
@@ -158,8 +158,64 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Ledger Database Schema and Core Data Model",
+            "description": "Design the PostgreSQL database schema for storing ledger accounts, journal entries, and individual debit/credit legs. This includes defining tables for `accounts`, `journals`, and `journal_entries` (or `legs`) to support double-entry accounting.",
+            "dependencies": [],
+            "details": "Define fields for account types, names, journal ID, entry details (debit/credit amount, account ID, currency), and timestamps. Ensure the schema supports efficient balance queries and the single-currency requirement (XAF minor units).",
+            "status": "done",
+            "testStrategy": "Review schema design for correctness and efficiency. Prepare schema migration scripts for testing."
+          },
+          {
+            "id": 2,
+            "title": "Implement Core Account Management and Invariant Logic",
+            "description": "Develop the internal logic for managing the predefined ledger accounts and enforcing the strict debit=credit invariant for all transactions. This includes validation rules for journal entries.",
+            "dependencies": [
+              "2.1"
+            ],
+            "details": "Implement internal functions to create/retrieve the specified accounts: Float assets (per provider), Customer escrow payable, Merchant payable, Clearing receivable/payable, Fee revenue. Develop robust validation logic to ensure `sum(debits) == sum(credits)` for any proposed journal entry. Ensure all amounts are handled in XAF minor units.",
+            "status": "done",
+            "testStrategy": "Unit tests for account creation/retrieval. Unit tests for debit=credit invariant logic, covering balanced, imbalanced, and edge-case journal entries. Test currency handling for XAF minor units."
+          },
+          {
+            "id": 3,
+            "title": "Implement `PostJournal` gRPC API",
+            "description": "Develop the `PostJournal` gRPC API endpoint to allow external services to record financial transactions into the ledger. This API will utilize the core invariant logic and persist data to Postgres.",
+            "dependencies": [
+              "2.1",
+              "2.2"
+            ],
+            "details": "Define the gRPC service and message definitions for `PostJournal`. Implement the handler that receives journal requests, validates them using the invariant logic, and persists the journal and its entries to the PostgreSQL database. Ensure the entire operation is atomic (e.g., within a database transaction).",
+            "status": "done",
+            "testStrategy": "Unit tests for the gRPC handler logic. Integration tests with a test PostgreSQL instance to verify successful journal posting and data persistence, including multi-leg journals. Negative tests for invalid journal entries (e.g., imbalanced, invalid account IDs, incorrect currency)."
+          },
+          {
+            "id": 4,
+            "title": "Implement Balance Query gRPC APIs (`GetBalance`, `ListBalances`)",
+            "description": "Develop the `GetBalance` and `ListBalances` gRPC APIs to retrieve current balances for specific accounts or a list of accounts from the authoritative ledger.",
+            "dependencies": [
+              "2.1",
+              "2.3"
+            ],
+            "details": "Define gRPC service and message definitions for `GetBalance` (by account ID/name) and `ListBalances` (for multiple accounts or all accounts). Implement the handlers to query the PostgreSQL ledger, aggregate debit/credit entries, and return the current balance for the requested accounts. Balances should be returned in XAF minor units.",
+            "status": "done",
+            "testStrategy": "Unit tests for balance calculation logic. Integration tests with a populated PostgreSQL instance to verify correct balance retrieval for various accounts and scenarios (e.g., accounts with only debits, only credits, mixed, zero balance, non-existent accounts)."
+          },
+          {
+            "id": 5,
+            "title": "OpenTelemetry Tracing and Service Integration",
+            "description": "Integrate OpenTelemetry for distributed tracing of all journal posting operations and set up the overall Ledger Service structure.",
+            "dependencies": [
+              "2.3"
+            ],
+            "details": "Configure the OpenTelemetry SDK within the Ledger Service. Instrument the `PostJournal` gRPC handler and underlying database operations to ensure every journal posting is traced, capturing relevant attributes like journal ID, account IDs, and amounts. Set up the main application entry point, gRPC server, and database connection pool.",
+            "status": "done",
+            "testStrategy": "Integration tests to verify OpenTelemetry traces are generated and exported correctly for `PostJournal` calls. Verify trace spans include relevant information and context for debugging and monitoring."
+          }
+        ]
       },
       {
         "id": 3,
@@ -356,7 +412,7 @@
     ],
     "metadata": {
       "created": "2025-08-17T22:33:56.207Z",
-      "updated": "2025-08-18T14:18:41.734Z",
+      "updated": "2025-08-29T10:45:22.143Z",
       "description": "Tasks for master context"
     }
   }

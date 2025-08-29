@@ -5,6 +5,9 @@ pub enum Error {
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
 
+    #[error("bad request: {0}")]
+    BadRequest(String),
+
     #[error("not found: {0}")]
     NotFound(String),
 
@@ -13,6 +16,9 @@ pub enum Error {
 
     #[error("provider error: {0}")]
     Provider(String),
+
+    #[error(transparent)]
+    Database(#[from] sqlx::Error),
 
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
