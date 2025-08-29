@@ -49,4 +49,21 @@ mod tests {
         let settings = settings.unwrap();
         assert_eq!(settings.log.level, "info");
     }
+
+    #[test]
+    fn test_env_override_log_level() {
+        // Preserve existing env var if any
+        let prev = std::env::var("APP_LOG_LEVEL").ok();
+
+        std::env::set_var("APP_LOG_LEVEL", "debug");
+        let settings = Settings::new().expect("failed to load settings with env override");
+        assert_eq!(settings.log.level, "debug");
+
+        // Restore previous value
+        if let Some(v) = prev {
+            std::env::set_var("APP_LOG_LEVEL", v);
+        } else {
+            std::env::remove_var("APP_LOG_LEVEL");
+        }
+    }
 }
