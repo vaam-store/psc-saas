@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package psc.payout.v1;
+
+option go_package = "github.com/yourorg/psc-saas/gen/go/psc/payout/v1;payoutv1";
+option java_package = "com.yourorg.psc.payout.v1";
+option objc_class_prefix = "PSC";
+
+import "google/protobuf/timestamp.proto";
+import "psc/common/v1/common.proto";
+
+// Payout service messages and RPCs.
+
+enum PayoutStatus {
+  PAYOUT_STATUS_UNSPECIFIED = 0;
+  PAYOUT_STATUS_PENDING = 1;
+  PAYOUT_STATUS_SENT = 2;
+  PAYOUT_STATUS_FAILED = 3;
+  PAYOUT_STATUS_CANCELLED = 4;
+}
+
+message CreatePayoutResponse {
+  Payout payout = 1;
+}
+
+message GetPayoutResponse {
+  Payout payout = 1;
+}
+
+message CreatePayoutRequest {
+  // Idempotency key or external identifier
+  string idempotency_key = 1;
+
+  // Amount to payout
+  psc.common.v1.Money amount = 2;
+
+  // Destination account or recipient ID
+  psc.common.v1.Id recipient_id = 3;
+
+  // Optional metadata
+  map<string, string> metadata = 4;
+}
+
+message Payout {
+  psc.common.v1.Id id = 1;
+  psc.common.v1.Money amount = 2;
+  PayoutStatus status = 3;
+  psc.common.v1.Timestamp created_at = 4;
+  psc.common.v1.Timestamp updated_at = 5;
+  string external_reference = 6;
+  map<string, string> metadata = 7;
+}
+
+message GetPayoutRequest {
+  psc.common.v1.Id id = 1;
+}
+
+message ListPayoutsRequest {
+  psc.common.v1.PaginationRequest pagination = 1;
+  psc.common.v1.Id recipient_id = 2;
+  PayoutStatus status = 3;
+  string from_date = 4;
+  string to_date = 5;
+}
+
+message ListPayoutsResponse {
+  repeated Payout payouts = 1;
+  psc.common.v1.Pagination pagination = 2;
+}
+
+// Service definition
+service PayoutService {
+  rpc CreatePayout(CreatePayoutRequest) returns (CreatePayoutResponse);
+  rpc GetPayout(GetPayoutRequest) returns (GetPayoutResponse);
+  rpc ListPayouts(ListPayoutsRequest) returns (ListPayoutsResponse);
+}

@@ -1,0 +1,40 @@
+services:
+  # One-shot service to generate protobuf artefacts from the repo's proto/ directory.
+  # This keeps all steps in compose as requested — no Dockerfile is required.
+  #
+  # How to use:
+  #   docker compose -f compose.proto.yaml run --rm protoc
+  #
+  # The service mounts the repository into /workspace, installs protoc and common
+  # helpers at runtime, and then runs the repository script scripts/generate_proto.sh
+  # which already exists in this repo. Generated files will be written into the
+  # mounted workspace so they are available on the host filesystem.
+  protoc:
+    image: bufbuild/buf:latest
+    tty: false
+    stdin_open: false
+    working_dir: /workspace/protos
+    entrypoint: buf
+    volumes:
+      - ./protos:/workspace/protos:ro
+      - ./gen:/workspace/gen:rw
+      - ./crates/packages:/workspace/crates/packages:rw
+    command:
+      - generate
+    restart: "no"
+    labels:
+      - 'com.example.role=proto-generator'
+
+  buf-lint:
+    image: bufbuild/buf:latest
+    tty: false
+    stdin_open: false
+    working_dir: /workspace/protos
+    entrypoint: buf
+    volumes:
+      - ./protos:/workspace/protos:ro
+    command:
+      - lint
+    restart: "no"
+    labels:
+      - 'com.example.role=proto-linter'

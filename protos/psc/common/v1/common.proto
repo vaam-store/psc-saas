@@ -22,7 +22,7 @@ message Money {
 
 // A lightweight identifier wrapper for entities that are represented as strings.
 // Use specific typedefs in language bindings where possible.
-message ID {
+message Id {
   string value = 1;
 }
 

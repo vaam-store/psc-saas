@@ -4,3 +4,18 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+sqlx.workspace = true
+psc-error.workspace = true
+psc-domain.workspace = true
+serde.workspace = true
+time.workspace = true
+uuid.workspace = true
+tonic.workspace = true
+prost.workspace = true
+async-trait.workspace = true
+prost-types.workspace = true
+tonic-prost.workspace = true
+
+[build-dependencies]
+tonic-build = { workspace = true }
+tonic-prost-build = { workspace = true }

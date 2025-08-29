@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package psc.payment.v1;
+
+option go_package = "github.com/yourorg/psc-saas/gen/go/psc/payment/v1;paymentv1";
+option java_package = "com.yourorg.psc.payment.v1";
+option objc_class_prefix = "PSC";
+
+import "google/protobuf/timestamp.proto";
+import "psc/common/v1/common.proto";
+
+// Payment service messages and RPCs.
+
+enum PaymentStatus {
+  PAYMENT_STATUS_UNSPECIFIED = 0;
+  PAYMENT_STATUS_PENDING = 1;
+  PAYMENT_STATUS_COMPLETED = 2;
+  PAYMENT_STATUS_FAILED = 3;
+  PAYMENT_STATUS_CANCELLED = 4;
+}
+
+message CreatePaymentResponse {
+  Payment payment = 1;
+}
+
+message GetPaymentResponse {
+  Payment payment = 1;
+}
+
+message CreatePaymentRequest {
+  // Client-provided idempotency key or external id
+  string idempotency_key = 1;
+
+  // Payment amount and currency
+  psc.common.v1.Money amount = 2;
+
+  // Payer identifier
+  psc.common.v1.Id payer_id = 3;
+
+  // Payee identifier
+  psc.common.v1.Id payee_id = 4;
+
+  // Optional metadata (free-form)
+  map<string, string> metadata = 5;
+}
+
+message Payment {
+  psc.common.v1.Id id = 1;
+  psc.common.v1.Money amount = 2;
+  PaymentStatus status = 3;
+  psc.common.v1.Timestamp created_at = 4;
+  psc.common.v1.Timestamp updated_at = 5;
+  map<string, string> metadata = 6;
+  string reference = 7; // External reference / bank transaction id
+}
+
+message GetPaymentRequest {
+  psc.common.v1.Id id = 1;
+}
+
+message ListPaymentsRequest {
+  psc.common.v1.PaginationRequest pagination = 1;
+  psc.common.v1.Id payer_id = 2;
+  psc.common.v1.Id payee_id = 3;
+  PaymentStatus status = 4;
+  string from_date = 5; // ISO-8601 date filter
+  string to_date = 6; // ISO-8601 date filter
+}
+
+message ListPaymentsResponse {
+  repeated Payment payments = 1;
+  psc.common.v1.Pagination pagination = 2;
+}
+
+// Service definition
+service PaymentService {
+  rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse);
+  rpc GetPayment(GetPaymentRequest) returns (GetPaymentResponse);
+  rpc ListPayments(ListPaymentsRequest) returns (ListPaymentsResponse);
+}

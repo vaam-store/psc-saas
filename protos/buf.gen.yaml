@@ -1,0 +1,14 @@
+version: v1
+plugins:
+  - plugin: buf.build/community/namely-protoc-gen-prost:v0.3.0
+    out: ../crates/packages
+    opt:
+      - "bytes=[.psc.common.v1.Id]"
+      - "prost"
+      - "extern_path=.psc.common.v1.Money=psc_domain::Money"
+      - "skip_common"
+      - "rpc_attribute=#[tracing::instrument(skip(self, ctx), err)]"
+  - plugin: buf.build/community/namely-protoc-gen-prost-crate:v0.3.0
+    out: ../crates/packages
+    opt:
+      - "prost"

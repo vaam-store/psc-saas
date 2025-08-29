@@ -1,0 +1,13 @@
+[package]
+name = "psc-config-loader"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+psc-config = { path = "../psc-config" }
+psc-secrets = { path = "../psc-secrets" }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["full"] }
+anyhow = { workspace = true }
+serde_json = { workspace = true }
+futures = { workspace = true }

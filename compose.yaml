@@ -31,5 +31,19 @@ services:
       ADMINER_DESIGN: ${ADMINER_DESIGN:-dracula}
       ADMINER_PLUGINS: ${ADMINER_PLUGINS:-tables-filter tinymce}
 
+  redis:
+    image: redis:7-alpine
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    ports:
+      - ${REDIS_PORT:-6379}:6379
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
 volumes:
   db: {}
+  redis-data: {}

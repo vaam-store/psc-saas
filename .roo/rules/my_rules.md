@@ -28,3 +28,4 @@
 20. I use zustand for state management.
 21. I use tanstack query for querying APIs.
 22. I prefer sqlx to diesel and write migrations files using sql.
+23. I prefer using cuid instead of uuid.

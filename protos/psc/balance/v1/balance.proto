@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package psc.balance.v1;
+
+option go_package = "github.com/yourorg/psc-saas/gen/go/psc/balance/v1;balancev1";
+option java_package = "com.yourorg.psc.balance.v1";
+option objc_class_prefix = "PSC";
+
+import "google/protobuf/timestamp.proto";
+import "psc/common/v1/common.proto";
+
+// Balance service messages and RPCs.
+
+message GetBalanceRequest {
+  psc.common.v1.Id account_id = 1;
+}
+
+message GetBalanceResponse {
+  Balance balance = 1;
+}
+
+message Balance {
+  psc.common.v1.Id account_id = 1;
+  psc.common.v1.Money available = 2;
+  psc.common.v1.Money reserved = 3;
+  psc.common.v1.Money ledger = 4;
+  psc.common.v1.Timestamp as_of = 5;
+  map<string, string> metadata = 6;
+}
+
+message ListBalancesRequest {
+  psc.common.v1.PaginationRequest pagination = 1;
+  string account_prefix = 2;
+}
+
+message ListBalancesResponse {
+  repeated Balance balances = 1;
+  psc.common.v1.Pagination pagination = 2;
+}
+
+// Service definition
+service BalanceService {
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+  rpc ListBalances(ListBalancesRequest) returns (ListBalancesResponse);
+}

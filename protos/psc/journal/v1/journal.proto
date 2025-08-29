@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package psc.journal.v1;
+
+option go_package = "github.com/yourorg/psc-saas/gen/go/psc/journal/v1;journalv1";
+option java_package = "com.yourorg.psc.journal.v1";
+option objc_class_prefix = "PSC";
+
+import "google/protobuf/timestamp.proto";
+import "psc/common/v1/common.proto";
+
+// Journal service messages and RPCs for ledger entries.
+
+enum EntryType {
+  ENTRY_TYPE_UNSPECIFIED = 0;
+  ENTRY_TYPE_DEBIT = 1;
+  ENTRY_TYPE_CREDIT = 2;
+}
+
+message JournalEntry {
+  psc.common.v1.Id id = 1;
+  psc.common.v1.Money amount = 2;
+  EntryType type = 3;
+  string account = 4; // accounting ledger account identifier
+  psc.common.v1.Timestamp posted_at = 5;
+  string reference = 6;
+  map<string, string> metadata = 7;
+}
+
+message PostJournalRequest {
+  // Idempotency key for posting
+  string idempotency_key = 1;
+
+  repeated JournalEntry entries = 2;
+  string narrative = 3;
+  map<string, string> metadata = 4;
+}
+
+message PostJournalResponse {
+  repeated JournalEntry posted_entries = 1;
+}
+
+message GetJournalEntryResponse {
+  JournalEntry journal_entry = 1;
+}
+
+message GetJournalEntryRequest {
+  psc.common.v1.Id id = 1;
+}
+
+message ListJournalEntriesRequest {
+  psc.common.v1.PaginationRequest pagination = 1;
+  string account = 2;
+  string from_date = 3;
+  string to_date = 4;
+}
+
+message ListJournalEntriesResponse {
+  repeated JournalEntry entries = 1;
+  psc.common.v1.Pagination pagination = 2;
+}
+
+// Service definition
+service JournalService {
+  rpc PostJournal(PostJournalRequest) returns (PostJournalResponse);
+  rpc GetJournalEntry(GetJournalEntryRequest) returns (GetJournalEntryResponse);
+  rpc ListJournalEntries(ListJournalEntriesRequest) returns (ListJournalEntriesResponse);
+}
