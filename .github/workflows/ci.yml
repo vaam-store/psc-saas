@@ -7,6 +7,29 @@ on:
     branches: [ main, master ]
 
 jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Ensure formatting (cargo fmt check)
+        run: |
+          rustup component add rustfmt || true
+          cargo fmt --all -- --check
+
+      - name: Run clippy (lints)
+        run: |
+          rustup component add clippy || true
+          cargo clippy --workspace --all-targets -- -D warnings
   ci:
     name: Lint • Build • Test • Proto • Containerize
     runs-on: ubuntu-latest
@@ -26,7 +49,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-cargo-registry-target-${{ hashFiles('Cargo.lock', 'Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-cargo-registry-
 
@@ -40,16 +64,6 @@ jobs:
       - name: Install cargo-deny (optional)
         run: |
           cargo install cargo-deny --locked || true
-
-      - name: Ensure formatting (cargo fmt check)
-        run: |
-          rustup component add rustfmt || true
-          cargo fmt --all -- --check
-
-      - name: Run clippy (lints)
-        run: |
-          rustup component add clippy || true
-          cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Generate protobufs (if script exists)
         run: |
@@ -80,8 +94,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-logs
+          name: ci-logs-${{ matrix.os }}
           path: |
+            ./**/target/debug/*test*
+            ./**/target/debug/*.log
             target/debug
             target/debug/deps
-            ./**/target/debug || true
