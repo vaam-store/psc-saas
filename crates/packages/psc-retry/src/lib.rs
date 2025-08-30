@@ -104,7 +104,7 @@ pub enum CircuitState {
     Closed,
     /// Circuit is open, rejecting requests
     Open,
-    /// Circuit is half-open, allowing limited requests to test if service is恢复
+    /// Circuit is half-open, allowing limited requests to test if service is recovered
     HalfOpen,
 }
 

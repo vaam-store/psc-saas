@@ -8,7 +8,7 @@ Core directories
 - services/      - microservices implementations (per-service repositories planned)
 - shared/        - reusable libraries (domain, config, errors, retry, idempotency, observability)
 - protos/        - Protobuf schemas (common and service-specific)
-- gen/           - Generated code artifacts (pb, grpc-gateway, openapi)
+- gen/           - Generated artifacts for some languages (if configured)
 - deploy/        - Kubernetes / Knative / manifest templates
 - scripts/       - helper scripts (proto generation, local dev helpers)
 - test/          - shared test harness and integration test configs
@@ -25,7 +25,7 @@ Quickstart (local)
 
 Protobuf & Codegen
 - Place canonical protobuf files under [`protos/`](protos/:1)
-- Use the provided generation script [`scripts/generate_proto.sh`](scripts/generate_proto.sh:1) to produce language-specific bindings into [`gen/`](gen/:1)
+- Use the provided generation script [`scripts/generate_proto.sh`](scripts/generate_proto.sh:1) to generate code via Buf. Rust code is compiled directly into crates (for example under `crates/packages`) based on `buf.gen.yaml` configuration.
 
 Development workflow
 - Follow Conventional Commits for commit messages
@@ -36,7 +36,7 @@ Contributing
 See [`CONTRIBUTING.md`](CONTRIBUTING.md:1) for branch naming, PR guidelines, and how to add tasks to Taskmaster.
 
 CI
-A basic GitHub Actions workflow has been added at [`.github/workflows/ci.yml`](.github/workflows/ci.yml:1) to run proto generation, linting, tests, and builds.
+Continuous Integration configuration may be added per-repo; ensure lint, tests, and proto generation run in your CI as needed.
 
 License
 This project is released under the MIT License.

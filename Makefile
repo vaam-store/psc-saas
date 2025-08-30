@@ -2,12 +2,13 @@
 SHELL := /bin/bash
 .PHONY: proto-gen proto-clean proto-validate
 
-PROTO_ROOT ?= proto
+PROTO_ROOT ?= protos
+# OUT_DIR is not used when generating via buf; kept for compatibility
 OUT_DIR ?= gen
 SCRIPT := ./scripts/generate_proto.sh
 
 proto-gen:
-	@echo "Running proto generation..."
+	@echo "Running proto generation with buf..."
 	@PROTO_ROOT=$(PROTO_ROOT) OUT_DIR=$(OUT_DIR) $(SCRIPT)
 
 proto-clean:

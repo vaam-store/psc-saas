@@ -38,31 +38,60 @@ impl JournalServiceTrait for JournalService {
     ) -> Result<Response<PostJournalResponse>, Status> {
         let request = request.into_inner();
 
+        // Prepare optional description from narrative
+        let description = if request.narrative.trim().is_empty() {
+            None
+        } else {
+            Some(request.narrative.clone())
+        };
+
+        // Validate and transform entries; fail fast on first invalid entry
         let entries_to_create: Vec<(Uuid, EntryType, i64)> = request
             .entries
             .into_iter()
-            .filter_map(|entry| {
-                let account_id_uuid = match Uuid::parse_str(&entry.account) {
-                    Ok(uuid) => uuid,
-                    Err(_) => return None, // Or handle error appropriately
-                };
+            .enumerate()
+            .map(|(idx, entry)| {
+                let account_id_uuid = Uuid::parse_str(&entry.account).map_err(|_| {
+                    Status::invalid_argument(format!(
+                        "entries[{}].account is not a valid UUID",
+                        idx
+                    ))
+                })?;
+
                 let entry_type = match ProtoEntryType::try_from(entry.r#type) {
                     Ok(ProtoEntryType::Debit) => EntryType::Debit,
                     Ok(ProtoEntryType::Credit) => EntryType::Credit,
-                    _ => return None, // Or handle unknown/unspecified entry type
+                    Ok(_) | Err(_) => {
+                        return Err(Status::invalid_argument(format!(
+                            "entries[{}].type is unspecified or unknown",
+                            idx
+                        )))
+                    }
                 };
-                Some((
+
+                let amount_minor_units = entry
+                    .amount
+                    .as_ref()
+                    .map(|m| m.amount_minor_units)
+                    .ok_or_else(|| {
+                        Status::invalid_argument(format!(
+                            "entries[{}].amount is required",
+                            idx
+                        ))
+                    })?;
+
+                Ok::<(Uuid, EntryType, i64), Status>((
                     account_id_uuid,
                     entry_type,
-                    entry.amount.unwrap().amount_minor_units,
-                )) // Corrected field name
+                    amount_minor_units,
+                ))
             })
-            .collect();
+            .collect::<Result<Vec<_>, Status>>()?;
 
         // Convert the psc_error::Error to tonic::Status
-        let journal = self
+        let _journal = self
             .repository
-            .create_journal_with_entries(request.narrative.into(), entries_to_create) // Converted String to Option<String>
+            .create_journal_with_entries(description, entries_to_create)
             .await
             .map_err(|e| match e {
                 Error::BadRequest(msg) => Status::invalid_argument(msg),
