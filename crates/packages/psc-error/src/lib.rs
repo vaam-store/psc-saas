@@ -14,8 +14,8 @@ pub enum Error {
     #[error("internal error: {0}")]
     Internal(String),
 
-    #[error("provider error: {0}")]
-    Provider(String),
+    #[error("provider error (code: {code}): {message}")]
+    Provider { code: String, message: String },
 
     #[error(transparent)]
     Database(#[from] sqlx::Error),

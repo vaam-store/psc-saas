@@ -16,9 +16,11 @@ members = [
     "crates/packages/psc-telemetry",
     "crates/packages/psc-idempotency",
     "crates/packages/psc-retry",
-    "crates/packages/psc-provider", 
-    "crates/packages/psc-fees", 
-    "crates/packages/psc-secrets", "crates/packages/psc-config-loader",
+    "crates/packages/psc-provider",
+    "crates/packages/psc-fees",
+    "crates/packages/psc-secrets",
+    "crates/packages/psc-config-loader",
+    "crates/services/psc-provider-gateway",
 ]
 resolver = "3"
 
@@ -49,6 +51,12 @@ psc-error = { path = "./crates/packages/psc-error" }
 psc-idempotency = { path = "./crates/packages/psc-idempotency" }
 psc-telemetry = { path = "./crates/packages/psc-telemetry" }
 psc-retry = { path = "./crates/packages/psc-retry" }
+
+psc-provider = { path = "./crates/packages/psc-provider" }
+psc-fees = { path = "./crates/packages/psc-fees" }
+psc-secrets = { path = "./crates/packages/psc-secrets" }
+psc-config-loader = { path = "./crates/packages/psc-config-loader" }
+psc-provider-gateway = { path = "./crates/services/psc-provider-gateway" }
 
 axum = { version = "0.8", features = ["macros", "http2"] }
 tonic = { version = "0.14", features = ["gzip"] }
@@ -96,6 +104,8 @@ tracing-subscriber = { version = "0", features = ["env-filter", "fmt"] }
 tracing-opentelemetry = { version = "0.30" }
 tracing = { version = "0", features = ["attributes"] }
 prometheus = { version = "0" }
+# Pin to a known-good version to avoid rand/nuid incompatibilities
+nats = { version = "0.24.1" }
 
 [workspace.dev-dependencies]
 wiremock = "0.6"
@@ -108,3 +118,6 @@ opt-level = "z"
 codegen-units = 1
 incremental = false
 strip = true
+
+[patch.crates-io]
+nuid = { path = "vendor/nuid" }

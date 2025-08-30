@@ -69,6 +69,12 @@ pub trait Provider: Send + Sync {
 #[cfg(feature = "mock")]
 mod mock {
     use super::*;
+    use super::{
+        Balance, CreatePaymentRequest, CreatePayoutRequest, Ctx, Error, GetBalanceRequest, Id,
+        JournalEntry, Money, Payment, PaymentStatus, Payout, PayoutStatus, PostJournalRequest,
+        Provider, Result, Timestamp, async_trait,
+    };
+    use cuid::cuid;
     use std::sync::Arc;
     use std::time::Instant;
     use tokio::sync::Mutex;
@@ -101,6 +107,333 @@ mod mock {
             Self {
                 behavior,
                 state: Arc::new(Mutex::new(MockState::default())),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl Provider for MockProvider {
+        async fn deposit(&self, _ctx: &Ctx, req: CreatePaymentRequest) -> Result<Payment, Error> {
+            let mut state = self.state.lock().await;
+
+            if let MockBehavior::Delay(duration, ref inner_behavior) = self.behavior {
+                tokio::time::sleep(duration).await;
+                match **inner_behavior {
+                    MockBehavior::AlwaysFail(ref msg) => {
+                        return Err(Error::Provider {
+                            code: "MOCK_ERROR".to_string(),
+                            message: msg.clone(),
+                        });
+                    }
+                    _ => {}
+                }
+            }
+
+            match self.behavior {
+                MockBehavior::AlwaysSucceed | MockBehavior::Delay(_, _) => Ok(Payment {
+                    id: Some(Id {
+                        value: cuid().to_string(),
+                    }),
+                    wallet_id: req.wallet_id,
+                    amount: req.amount,
+                    status: PaymentStatus::Success as i32,
+                    r#type: req.r#type,
+                    reference_id: req.reference_id,
+                    created_at: Some(Timestamp {
+                        seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                        nanos: 0,
+                    }),
+                    updated_at: Some(Timestamp {
+                        seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                        nanos: 0,
+                    }),
+                    ..Default::default()
+                }),
+                MockBehavior::AlwaysFail(ref msg) => Err(Error::Provider {
+                    code: "MOCK_ERROR".to_string(),
+                    message: msg.clone(),
+                }),
+                MockBehavior::FailOnceThenSucceed => {
+                    if !state.fail_once_consumed {
+                        state.fail_once_consumed = true;
+                        Err(Error::Provider {
+                            code: "MOCK_ERROR".to_string(),
+                            message: "Mock failure (FailOnceThenSucceed)".to_string(),
+                        })
+                    } else {
+                        Ok(Payment {
+                            id: Some(Id {
+                                value: cuid().to_string(),
+                            }),
+                            wallet_id: req.wallet_id,
+                            amount: req.amount,
+                            status: PaymentStatus::Success as i32,
+                            r#type: req.r#type,
+                            reference_id: req.reference_id,
+                            created_at: Some(Timestamp {
+                                seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                                nanos: 0,
+                            }),
+                            updated_at: Some(Timestamp {
+                                seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                                nanos: 0,
+                            }),
+                            ..Default::default()
+                        })
+                    }
+                }
+            }
+        }
+
+        async fn withdraw(&self, _ctx: &Ctx, req: CreatePayoutRequest) -> Result<Payout, Error> {
+            let mut state = self.state.lock().await;
+
+            if let MockBehavior::Delay(duration, ref inner_behavior) = self.behavior {
+                tokio::time::sleep(duration).await;
+                match **inner_behavior {
+                    MockBehavior::AlwaysFail(ref msg) => {
+                        return Err(Error::Provider {
+                            code: "MOCK_ERROR".to_string(),
+                            message: msg.clone(),
+                        });
+                    }
+                    _ => {}
+                }
+            }
+
+            match self.behavior {
+                MockBehavior::AlwaysSucceed | MockBehavior::Delay(_, _) => Ok(Payout {
+                    id: Some(Id {
+                        value: cuid().to_string(),
+                    }),
+                    wallet_id: req.wallet_id,
+                    amount: req.amount,
+                    status: PayoutStatus::Success as i32,
+                    r#type: req.r#type,
+                    reference_id: req.reference_id,
+                    created_at: Some(Timestamp {
+                        seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                        nanos: 0,
+                    }),
+                    updated_at: Some(Timestamp {
+                        seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                        nanos: 0,
+                    }),
+                    ..Default::default()
+                }),
+                MockBehavior::AlwaysFail(ref msg) => Err(Error::Provider {
+                    code: "MOCK_ERROR".to_string(),
+                    message: msg.clone(),
+                }),
+                MockBehavior::FailOnceThenSucceed => {
+                    if !state.fail_once_consumed {
+                        state.fail_once_consumed = true;
+                        Err(Error::Provider {
+                            code: "MOCK_ERROR".to_string(),
+                            message: "Mock failure (FailOnceThenSucceed)".to_string(),
+                        })
+                    } else {
+                        Ok(Payout {
+                            id: Some(Id {
+                                value: cuid().to_string(),
+                            }),
+                            wallet_id: req.wallet_id,
+                            amount: req.amount,
+                            status: PayoutStatus::Success as i32,
+                            r#type: req.r#type,
+                            reference_id: req.reference_id,
+                            created_at: Some(Timestamp {
+                                seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                                nanos: 0,
+                            }),
+                            updated_at: Some(Timestamp {
+                                seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                                nanos: 0,
+                            }),
+                            ..Default::default()
+                        })
+                    }
+                }
+            }
+        }
+
+        async fn refund(&self, _ctx: &Ctx, req: PostJournalRequest) -> Result<JournalEntry, Error> {
+            let mut state = self.state.lock().await;
+
+            if let MockBehavior::Delay(duration, ref inner_behavior) = self.behavior {
+                tokio::time::sleep(duration).await;
+                match **inner_behavior {
+                    MockBehavior::AlwaysFail(ref msg) => {
+                        return Err(Error::Provider {
+                            code: "MOCK_ERROR".to_string(),
+                            message: msg.clone(),
+                        });
+                    }
+                    _ => {}
+                }
+            }
+
+            match self.behavior {
+                MockBehavior::AlwaysSucceed | MockBehavior::Delay(_, _) => Ok(JournalEntry {
+                    id: Some(Id {
+                        value: cuid().to_string(),
+                    }),
+                    account_id: req.account_id,
+                    amount: req.amount,
+                    entry_type: req.entry_type,
+                    reference_id: req.reference_id,
+                    created_at: Some(Timestamp {
+                        seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                        nanos: 0,
+                    }),
+                    updated_at: Some(Timestamp {
+                        seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                        nanos: 0,
+                    }),
+                    ..Default::default()
+                }),
+                MockBehavior::AlwaysFail(ref msg) => Err(Error::Provider {
+                    code: "MOCK_ERROR".to_string(),
+                    message: msg.clone(),
+                }),
+                MockBehavior::FailOnceThenSucceed => {
+                    if !state.fail_once_consumed {
+                        state.fail_once_consumed = true;
+                        Err(Error::Provider {
+                            code: "MOCK_ERROR".to_string(),
+                            message: "Mock failure (FailOnceThenSucceed)".to_string(),
+                        })
+                    } else {
+                        Ok(JournalEntry {
+                            id: Some(Id {
+                                value: cuid().to_string(),
+                            }),
+                            account_id: req.account_id,
+                            amount: req.amount,
+                            entry_type: req.entry_type,
+                            reference_id: req.reference_id,
+                            created_at: Some(Timestamp {
+                                seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                                nanos: 0,
+                            }),
+                            updated_at: Some(Timestamp {
+                                seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                                nanos: 0,
+                            }),
+                            ..Default::default()
+                        })
+                    }
+                }
+            }
+        }
+
+        async fn query(&self, _ctx: &Ctx, req: GetBalanceRequest) -> Result<Balance, Error> {
+            let mut state = self.state.lock().await;
+
+            if let MockBehavior::Delay(duration, ref inner_behavior) = self.behavior {
+                tokio::time::sleep(duration).await;
+                match **inner_behavior {
+                    MockBehavior::AlwaysFail(ref msg) => {
+                        return Err(Error::Provider {
+                            code: "MOCK_ERROR".to_string(),
+                            message: msg.clone(),
+                        });
+                    }
+                    _ => {}
+                }
+            }
+
+            match self.behavior {
+                MockBehavior::AlwaysSucceed | MockBehavior::Delay(_, _) => Ok(Balance {
+                    account_id: req.account_id,
+                    available_balance: Some(Money {
+                        currency_code: "USD".to_string(),
+                        amount: "1000.00".to_string(),
+                    }),
+                    ledger_balance: Some(Money {
+                        currency_code: "USD".to_string(),
+                        amount: "1000.00".to_string(),
+                    }),
+                    updated_at: Some(Timestamp {
+                        seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                        nanos: 0,
+                    }),
+                    ..Default::default()
+                }),
+                MockBehavior::AlwaysFail(ref msg) => Err(Error::Provider {
+                    code: "MOCK_ERROR".to_string(),
+                    message: msg.clone(),
+                }),
+                MockBehavior::FailOnceThenSucceed => {
+                    if !state.fail_once_consumed {
+                        state.fail_once_consumed = true;
+                        Err(Error::Provider {
+                            code: "MOCK_ERROR".to_string(),
+                            message: "Mock failure (FailOnceThenSucceed)".to_string(),
+                        })
+                    } else {
+                        Ok(Balance {
+                            account_id: req.account_id,
+                            available_balance: Some(Money {
+                                currency_code: "USD".to_string(),
+                                amount: "1000.00".to_string(),
+                            }),
+                            ledger_balance: Some(Money {
+                                currency_code: "USD".to_string(),
+                                amount: "1000.00".to_string(),
+                            }),
+                            updated_at: Some(Timestamp {
+                                seconds: time::OffsetDateTime::now_utc().unix_timestamp(),
+                                nanos: 0,
+                            }),
+                            ..Default::default()
+                        })
+                    }
+                }
+            }
+        }
+
+        async fn verify_webhook(
+            &self,
+            _ctx: &Ctx,
+            payload: &[u8],
+            _signature_header: Option<&str>,
+        ) -> Result<bool, Error> {
+            let mut state = self.state.lock().await;
+
+            if let MockBehavior::Delay(duration, ref inner_behavior) = self.behavior {
+                tokio::time::sleep(duration).await;
+                match **inner_behavior {
+                    MockBehavior::AlwaysFail(ref msg) => {
+                        return Err(Error::Provider {
+                            code: "MOCK_ERROR".to_string(),
+                            message: msg.clone(),
+                        });
+                    }
+                    _ => {}
+                }
+            }
+
+            match self.behavior {
+                MockBehavior::AlwaysSucceed | MockBehavior::Delay(_, _) => {
+                    // Simple mock logic: if payload contains "valid", return true
+                    Ok(String::from_utf8_lossy(payload).contains("valid"))
+                }
+                MockBehavior::AlwaysFail(ref msg) => Err(Error::Provider {
+                    code: "MOCK_ERROR".to_string(),
+                    message: msg.clone(),
+                }),
+                MockBehavior::FailOnceThenSucceed => {
+                    if !state.fail_once_consumed {
+                        state.fail_once_consumed = true;
+                        Err(Error::Provider {
+                            code: "MOCK_ERROR".to_string(),
+                            message: "Mock failure (FailOnceThenSucceed)".to_string(),
+                        })
+                    } else {
+                        Ok(String::from_utf8_lossy(payload).contains("valid"))
+                    }
+                }
             }
         }
     }

@@ -227,8 +227,186 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define Provider Trait and Unified Error Model",
+            "description": "Finalize the `Provider` trait interface (`deposit`, `withdraw`, `refund`, `query`, `verify_webhook`) and establish a unified error model for all provider interactions.",
+            "dependencies": [],
+            "details": "Review existing trait definition in shared packages. Design the common error enum/struct for consistent error reporting across providers, including error codes and messages.",
+            "status": "done",
+            "testStrategy": "Review trait definition for completeness and correctness. Validate unified error model against common error scenarios and edge cases."
+          },
+          {
+            "id": 2,
+            "title": "Set Up Unified Provider Gateway Core Project",
+            "description": "Initialize the project structure for the Unified Provider Gateway, including basic module setup, dependency management, and core service architecture.",
+            "dependencies": [],
+            "details": "Create the main gateway service, define interfaces for provider adapters, and set up configuration management for different environments.",
+            "status": "done",
+            "testStrategy": "Verify project compilation and basic service startup. Ensure configuration loading is correct and basic health checks pass."
+          },
+          {
+            "id": 3,
+            "title": "Implement MockProvider::deposit and withdraw",
+            "description": "Develop the mock implementations for the `deposit` (collection) and `withdraw` (disbursement) methods of the `Provider` trait for local development and testing.",
+            "dependencies": [
+              "3.1",
+              "3.2"
+            ],
+            "details": "Simulate successful and failed transactions, generate mock transaction IDs, and update internal mock states for deposits and withdrawals.",
+            "status": "done",
+            "testStrategy": "Unit tests for `MockProvider::deposit` and `withdraw` to verify mock transaction ID generation, status updates, and error simulation."
+          },
+          {
+            "id": 4,
+            "title": "Implement MockProvider::refund and query",
+            "description": "Develop the mock implementations for the `refund` and `query` methods of the `Provider` trait for local development and testing.",
+            "dependencies": [
+              "3.1",
+              "3.2"
+            ],
+            "details": "Simulate refund processing, including linking to original transactions. Implement mock transaction status queries based on generated mock data.",
+            "status": "done",
+            "testStrategy": "Unit tests for `MockProvider::refund` and `query` to verify mock refund processing, status retrieval, and handling of non-existent transactions."
+          },
+          {
+            "id": 5,
+            "title": "Implement MockProvider::verify_webhook",
+            "description": "Develop the mock implementation for the `verify_webhook` method of the `Provider` trait for local development and testing.",
+            "dependencies": [
+              "3.1",
+              "3.2"
+            ],
+            "details": "Simulate webhook verification logic, accepting predefined mock webhook payloads as valid or invalid based on test scenarios.",
+            "status": "done",
+            "testStrategy": "Unit tests for `MockProvider::verify_webhook` to ensure mock webhook verification logic behaves as expected for valid and invalid payloads."
+          },
+          {
+            "id": 6,
+            "title": "Develop MTN Sandbox API Client & Data Models",
+            "description": "Create the HTTP client and define request/response data models for interacting with the MTN sandbox API.",
+            "dependencies": [],
+            "details": "Identify MTN API endpoints for collection, disbursement, refund, query, and webhooks. Map MTN-specific fields to internal data models for consistency.",
+            "status": "done",
+            "testStrategy": "Unit tests for data model serialization/deserialization. Basic connectivity tests to MTN sandbox endpoints (without full transaction logic) to verify client setup."
+          },
+          {
+            "id": 7,
+            "title": "Implement MtnSandboxAdapter::deposit (Collection)",
+            "description": "Develop the MTN sandbox specific implementation for the `deposit` method, handling API calls for collection and initial error mapping.",
+            "dependencies": [
+              "3.1",
+              "3.2",
+              "3.6"
+            ],
+            "details": "Integrate with the MTN collection API, map internal request/response structures to MTN's, and handle initial MTN-specific error codes.",
+            "status": "done",
+            "testStrategy": "Unit tests for request/response mapping. Integration tests with MTN sandbox for successful and failed deposit scenarios, verifying correct API interaction."
+          },
+          {
+            "id": 8,
+            "title": "Implement MtnSandboxAdapter::withdraw (Disbursement)",
+            "description": "Develop the MTN sandbox specific implementation for the `withdraw` method, handling API calls for disbursement and initial error mapping.",
+            "dependencies": [
+              "3.1",
+              "3.2",
+              "3.6"
+            ],
+            "details": "Integrate with the MTN disbursement API, map internal request/response structures to MTN's, and handle initial MTN-specific error codes.",
+            "status": "done",
+            "testStrategy": "Unit tests for request/response mapping. Integration tests with MTN sandbox for successful and failed withdraw scenarios, verifying correct API interaction."
+          },
+          {
+            "id": 9,
+            "title": "Implement MtnSandboxAdapter::refund",
+            "description": "Develop the MTN sandbox specific implementation for the `refund` method, handling API calls for refunds and initial error mapping.",
+            "dependencies": [
+              "3.1",
+              "3.2",
+              "3.6"
+            ],
+            "details": "Integrate with the MTN refund API, map internal request/response structures to MTN's, and handle initial MTN-specific error codes.",
+            "status": "done",
+            "testStrategy": "Unit tests for request/response mapping. Integration tests with MTN sandbox for successful and failed refund scenarios, verifying correct API interaction."
+          },
+          {
+            "id": 10,
+            "title": "Implement MtnSandboxAdapter::query",
+            "description": "Develop the MTN sandbox specific implementation for the `query` method, handling API calls for transaction status.",
+            "dependencies": [
+              "3.1",
+              "3.2",
+              "3.6"
+            ],
+            "details": "Integrate with the MTN transaction status API, map internal request/response structures to MTN's, and handle initial MTN-specific error codes.",
+            "status": "done",
+            "testStrategy": "Unit tests for request/response mapping. Integration tests with MTN sandbox for various transaction status queries, including pending, successful, and failed states."
+          },
+          {
+            "id": 11,
+            "title": "Implement MtnSandboxAdapter::verify_webhook",
+            "description": "Develop the MTN sandbox specific implementation for the `verify_webhook` method, handling MTN webhook validation.",
+            "dependencies": [
+              "3.1",
+              "3.2",
+              "3.6"
+            ],
+            "details": "Implement logic to verify MTN webhook signatures or other authentication mechanisms to ensure webhook authenticity and integrity.",
+            "status": "done",
+            "testStrategy": "Unit tests for webhook signature verification logic. Integration tests with MTN sandbox for valid and invalid webhook payloads to ensure correct handling."
+          },
+          {
+            "id": 12,
+            "title": "Implement Idempotency Mechanism",
+            "description": "Develop a robust idempotency layer for all provider transactions using provider transaction IDs to prevent duplicate processing.",
+            "dependencies": [
+              "3.2"
+            ],
+            "details": "Design and implement a mechanism (e.g., using a database or Redis) to store and check provider transaction IDs and idempotency keys to ensure each transaction is processed only once.",
+            "status": "done",
+            "testStrategy": "Unit tests for idempotency key generation and lookup. Integration tests to ensure duplicate requests are handled correctly (e.g., second request returns original result without re-processing)."
+          },
+          {
+            "id": 13,
+            "title": "Refine MTN Error Mapping to Unified Model",
+            "description": "Map all MTN-specific API errors and quirks to the previously defined unified error model, ensuring consistent error reporting from the gateway.",
+            "dependencies": [
+              "3.1",
+              "3.7",
+              "3.8",
+              "3.9",
+              "3.10",
+              "3.11"
+            ],
+            "details": "Review all potential MTN error responses (HTTP status codes, error bodies) and create comprehensive mapping rules to translate them into the unified error model.",
+            "status": "done",
+            "testStrategy": "Unit tests for error mapping logic, covering various MTN error codes and ensuring correct translation to the unified error model. Integration tests to verify error propagation."
+          },
+          {
+            "id": 14,
+            "title": "Integrate Event Bus (NATS/Kafka) for Async Workflows",
+            "description": "Implement integration with NATS/Kafka as an event bus for handling asynchronous workflows and sagas within the gateway, such as webhook notifications or long-running transactions.",
+            "dependencies": [
+              "3.2"
+            ],
+            "details": "Set up producers and consumers for relevant events (e.g., transaction status updates, webhook notifications). Define event schemas and ensure reliable message delivery.",
+            "status": "done",
+            "testStrategy": "Integration tests to verify event publishing and consumption. End-to-end tests for a simple async workflow using the event bus to confirm message flow and processing."
+          },
+          {
+            "id": 15,
+            "title": "Integrate Redis for Caching",
+            "description": "Implement Redis integration for caching provider-related data to improve performance and reduce redundant API calls.",
+            "dependencies": [
+              "3.2"
+            ],
+            "details": "Identify suitable data for caching (e.g., provider configurations, frequently queried transaction statuses, idempotency keys) and implement caching strategies (e.g., TTL, eviction policies).",
+            "status": "done",
+            "testStrategy": "Unit tests for cache read/write operations. Integration tests to verify data is correctly cached and retrieved, and cache invalidation works as expected."
+          }
+        ]
       },
       {
         "id": 4,
@@ -412,7 +590,7 @@
     ],
     "metadata": {
       "created": "2025-08-17T22:33:56.207Z",
-      "updated": "2025-08-29T10:45:22.143Z",
+      "updated": "2025-08-29T15:28:37.786Z",
       "description": "Tasks for master context"
     }
   }
